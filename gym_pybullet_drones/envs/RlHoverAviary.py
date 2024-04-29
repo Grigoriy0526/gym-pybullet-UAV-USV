@@ -112,7 +112,7 @@ class RlHoverAviary(NewBaseRLAviary):
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
         val = LossFunction.communication_quality_function(uav_coord.reshape(1, 2, 3),self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
-        if 10.5 >= uav_coord[0, 2] >= 9.5 or 10.5 >= uav_coord[0, 2] >= 9.5:
+        if 10.5 >= uav_coord[0, 2] >= 9.5 or 10.5 >= uav_coord[1, 2] >= 9.5:
             ret = (10000 / val**2)
         else:
             ret = 0
@@ -120,6 +120,24 @@ class RlHoverAviary(NewBaseRLAviary):
         return ret
 
     ################################################################################
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = super().step(action)
+        pad_width = ((0, 0), (0, 49))
+        padded_array = np.pad(usv_coords[self.step_counter, :, :], pad_width, mode='constant', constant_values=0)
+        observation = np.concatinate(observation, padded_array)
+        return observation, reward, terminated, truncated, info
+
+
+    def reset(self, seed: int = None, options: dict = None):
+        initial_obs, initial_info = super().reset(seed=42, options={})
+
+        pad_width = ((0, 0), (0, 49))
+        padded_array = np.pad(usv_coords[0, :, :], pad_width, mode='constant', constant_values=0)
+        initial_obs = np.concatinate(initial_obs, padded_array)
+        return initial_obs, initial_info
+
+
 
     def _computeTerminated(self):
         """Computes the current done value.
