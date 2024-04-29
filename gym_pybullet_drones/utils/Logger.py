@@ -413,16 +413,16 @@ class Logger(object):
         val = LossFunction.communication_quality_function(uav_coord, usv_coord)
         reward = np.sum(1 / val)
         print("Reward", reward)
-        opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
-        opt_x[0] = uav_coord_c[0, :, :]
-        for i in range(1, usv_coord.shape[0]):
-            function = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
-                                                                             usv_coord[i, :, :].reshape(1, 4, 3))
-            optimized = minimize(function, opt_x[i - 1].reshape(1, -1))
-            opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
+        #opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
+        #opt_x[0] = uav_coord_c[0, :, :]
+        # for i in range(1, usv_coord.shape[0]):
+        #     function = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
+        #                                                                      usv_coord[i, :, :].reshape(1, 4, 3))
+        #     optimized = minimize(function, opt_x[i - 1].reshape(1, -1))
+        #     opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
-        opt_x[:, :, 2] += 10
-        val_opt = LossFunction.communication_quality_function(opt_x, usv_coord)
+        #opt_x[:, :, 2] += 10
+        #val_opt = LossFunction.communication_quality_function(opt_x, usv_coord)
 
         plt.rc('font', size=25)
         plt.rc('axes', titlesize=25)
@@ -436,7 +436,7 @@ class Logger(object):
         plots_uav_opt = []
         PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "USV", 3.0)
         PlotGeneration.created_plot(plots_uav, ax, self.NUM_DRONES, uav_coord, "UAV", 4.0)
-        PlotGeneration.created_plot(plots_uav_opt, ax, self.NUM_DRONES, opt_x, "UAV_OPT", 3.0)
+        #PlotGeneration.created_plot(plots_uav_opt, ax, self.NUM_DRONES, opt_x, "UAV_OPT", 3.0)
 
         ax.set_xlabel('  x, м')
         ax.set_ylabel('  y, м')
@@ -458,13 +458,13 @@ class Logger(object):
             start_frame_uav = max(0, frame - 10)
             PlotGeneration.update_animation(start_frame, frame, usv_coord, plots_usv)
             PlotGeneration.update_animation(start_frame_uav, frame, uav_coord, plots_uav)
-            PlotGeneration.update_animation(start_frame_uav, frame, opt_x, plots_uav_opt)
+            #PlotGeneration.update_animation(start_frame_uav, frame, opt_x, plots_uav_opt)
 
             plot_val = []
             plot_opt_val = []
             plot_val += ax2.plot(val[:frame], "b")
-            plot_opt_val += ax2.plot(val_opt[:frame], "r")
-            full_plots = plots_usv + plots_uav + plot_val + plots_uav_opt + plot_opt_val
+            #plot_opt_val += ax2.plot(val_opt[:frame], "r")
+            full_plots = plots_usv + plots_uav + plot_val #+ plots_uav_opt + plot_opt_val
             return full_plots
 
         ani1 = animation.FuncAnimation(fig, update, frames=trajs_s.time.n, blit=True, interval=100)

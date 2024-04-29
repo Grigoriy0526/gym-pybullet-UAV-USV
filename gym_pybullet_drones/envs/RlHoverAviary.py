@@ -1,6 +1,5 @@
 import numpy as np
 from dataclasses import dataclass, field
-from gym_pybullet_drones.envs.BaseRLAviary import BaseRLAviary
 from gym_pybullet_drones.envs.NewBaseRLAviary import NewBaseRLAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
@@ -112,7 +111,7 @@ class RlHoverAviary(NewBaseRLAviary):
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
         val = LossFunction.communication_quality_function(uav_coord.reshape(1, 2, 3),self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
-        if 10.5 >= uav_coord[0, 2] >= 9.5 or 10.5 >= uav_coord[1, 2] >= 9.5:
+        if uav_coord[0, 2] >= 9.5 or uav_coord[1, 2] >= 9.5:
             ret = (10000 / val**2)
         else:
             ret = 0
