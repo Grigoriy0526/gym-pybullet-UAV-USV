@@ -109,7 +109,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     #### Train the model #######################################
     # создаем модель с PPO
-    model = DDPG('MlpPolicy',
+    model = PPO('MlpPolicy',
                 train_env,
                 # tensorboard_log=filename+'/tb/',
                 verbose=1)
@@ -118,7 +118,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 8000
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=5, min_evals=100, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=5, min_evals=50, verbose=1)
     # stop_traning = StopTrainingOnMaxEpisodes(max_episodes=5, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
@@ -158,7 +158,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         path = filename + '/best_model.zip'
     else:
         print("[ERROR]: no model under the specified path", filename)
-    model = DDPG.load(path)
+    model = PPO.load(path)
 
     #### Show (and record a video of) the model's performance ##
 
