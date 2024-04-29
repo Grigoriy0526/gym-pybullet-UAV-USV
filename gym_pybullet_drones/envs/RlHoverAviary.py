@@ -124,7 +124,7 @@ class RlHoverAviary(NewBaseRLAviary):
     def step(self, action):
         observation, reward, terminated, truncated, info = super().step(action)
         pad_width = ((0, 0), (0, 49))
-        padded_array = np.pad(self.usv_coord[self.step_counter, :, :], pad_width, mode='constant', constant_values=0)
+        padded_array = np.pad(self.usv_coord[self.step_counter-15, :, :], pad_width, mode='constant', constant_values=0)
         observation = np.concatenate((observation, padded_array), axis=0)
         return observation, reward, terminated, truncated, info
 
