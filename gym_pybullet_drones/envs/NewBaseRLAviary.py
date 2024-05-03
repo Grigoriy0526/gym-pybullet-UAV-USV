@@ -208,7 +208,7 @@ class NewBaseRLAviary(BaseAviary):
                                                           )
                 rpm[k, :] = rpm_k
             elif self.ACT_TYPE == ActionType.VEL:
-                target[2] = 0
+                #target[2] = 0
                 state = self._getDroneStateVector(k)
                 if np.linalg.norm(target[0:3]) != 0:
                     v_unit_vector = target[0:3] / np.linalg.norm(target[0:3])
@@ -220,7 +220,7 @@ class NewBaseRLAviary(BaseAviary):
                                                          cur_vel=state[10:13],
                                                          cur_ang_vel=state[13:16],
                                                          target_pos=state[0:3],  # same as the current position
-                                                         target_rpy=np.array([0, 0, 0]),  # keep current yaw
+                                                         target_rpy=np.array([0, 0, state[9]]),  # keep current yaw
                                                          target_vel=np.abs(target[3]) * v_unit_vector*10
                                                          # target the desired velocity vector
                                                          )

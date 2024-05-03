@@ -4,6 +4,7 @@ from datetime import datetime
 import numpy
 from cycler import cycler
 import numpy as np
+os.environ["QT_QPA_PLATFORM"] = "wayland"
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from scipy.optimize import minimize

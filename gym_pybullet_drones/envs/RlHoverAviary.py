@@ -1,5 +1,6 @@
 import numpy as np
 from dataclasses import dataclass, field
+import math
 from gym_pybullet_drones.envs.NewBaseRLAviary import NewBaseRLAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
@@ -76,15 +77,15 @@ class RlHoverAviary(NewBaseRLAviary):
         """
 
 
-        INIT_XYZS = np.array([
-            [np.random.uniform(-10.0, 20.0), 10, 10],
-            [np.random.uniform(-10.0, 20.0), 50, 10]
-        ])
-        self.EPISODE_LEN_SEC = 10
+        # INIT_XYZS = np.array([
+        #     [np.random.uniform(-10.0, 20.0), 10, 10],
+        #     [np.random.uniform(-10.0, 20.0), 50, 10]
+        # ])
+        self.EPISODE_LEN_SEC = 20
         super().__init__(drone_model=drone_model,
                          num_drones=num_drones,
                          neighbourhood_radius=neighbourhood_radius,
-                         initial_xyzs=INIT_XYZS,
+                         initial_xyzs=initial_xyzs,
                          initial_rpys=initial_rpys,
                          physics=physics,
                          pyb_freq=pyb_freq,
@@ -93,14 +94,22 @@ class RlHoverAviary(NewBaseRLAviary):
                          record=record,
                          obs=obs,
                          act=act
+
                          )
         #self.TARGET_POS = self.INIT_XYZS + np.array([[30, 0, 1 / (i + 1)] for i in range(num_drones)])
 
         r1 = np.array([[0, 0], [0, 20], [0, 40], [0, 60]])
         xyz1 = np.array([[0, 0, 0], [0, 20, 0], [0, 40, 0], [0, 60, 0]])
+        phi = np.array([np.random.uniform(0, 2 * math.pi),
+                        np.random.uniform(0, 2 * math.pi),
+                        np.random.uniform(0, 2 * math.pi),
+                        np.random.uniform(0, 2 * math.pi)])
         time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
-        self.trajs = UsvTrajectory(time_data, m=4, r0=r1, xyz0=xyz1)
+        self.NUM_USV = 4
+        self.trajs = UsvTrajectory(time_data, m=self.NUM_USV, r0=r1, xyz0=xyz1, φ0=phi)
         self.usv_coord = self.trajs.xyz
+        #self.observation_usv = np.hstack([self.usv_coord, self.trajs.v, self.trajs.ω])
+        # a = 2
 
     ################################################################################
 
@@ -128,8 +137,17 @@ class RlHoverAviary(NewBaseRLAviary):
 
     def step(self, action):
         observation, reward, terminated, truncated, info = super().step(action)
-        pad_width = ((0, 0), (0, 49))
-        padded_array = np.pad(self.usv_coord[self.step_counter-15, :, :], pad_width, mode='constant', constant_values=0)
+        obs_usv = np.zeros((self.NUM_USV, 12))
+        for i in range(self.NUM_USV):
+            obs_usv[i, :] = np.hstack([self.usv_coord[self.step_counter-15, i, :],
+                                      np.zeros(2),
+                                      self.trajs.φ[self.step_counter-15, i],
+                                      np.append(self.trajs.v[self.step_counter-15, i, :], [0]),
+                                      self.trajs.ω_vect[self.step_counter-15, i, :]]).reshape(12, )
+
+        ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
+        pad_width = ((0, 0), (0, 40))
+        padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         observation = np.concatenate((observation, padded_array), axis=0)
         return observation, reward, terminated, truncated, info
 
@@ -137,8 +155,18 @@ class RlHoverAviary(NewBaseRLAviary):
     def reset(self, seed: int = None, options: dict = None):
         initial_obs, initial_info = super().reset(seed=42, options={})
 
-        pad_width = ((0, 0), (0, 49))
-        padded_array = np.pad(self.usv_coord[0, :, :], pad_width, mode='constant', constant_values=0)
+        obs_usv = np.zeros((self.NUM_USV, 12))
+        for i in range(self.NUM_USV):
+
+            obs_usv[i, :] = np.hstack([self.usv_coord[0, i, :],
+                                       np.zeros(2),
+                                       self.trajs.φ[0, i],
+                                       np.append(self.trajs.v[0, i, :], [0]),
+                                       self.trajs.ω_vect[0, i, :]]).reshape(12, )
+
+        ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
+        pad_width = ((0, 0), (0, 40))
+        padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         initial_obs = np.concatenate((initial_obs, padded_array), axis=0)
         return initial_obs, initial_info
 

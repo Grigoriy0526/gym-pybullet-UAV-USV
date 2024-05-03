@@ -28,6 +28,8 @@ class UsvTrajectory:
                  angle0=None,
                  total_traction0=None,
                  xyz0=None,
+                 traction_desired0=None,
+                 ω_vect0=None,
                  gen=True):
         self.time = time
         self.m = m
@@ -39,7 +41,9 @@ class UsvTrajectory:
         self.ω = np.empty((time.n, m, 1))
         self.ε = np.empty((time.n, m, 1))
         self.angle = np.empty((time.n, m))
+        self.ω_vect = np.empty((time.n, m, 3))
         self.total_traction = np.empty((time.n, m, 2))
+        self.traction_desired = np.empty((time.n, m, 2))
         self.r[0] = r0 if r0 is not None else np.zeros((m, 2))
         self.v[0] = v0 if v0 is not None else np.zeros((m, 2))
         self.a[0] = a0 if a0 is not None else np.zeros((m, 2))
@@ -49,6 +53,8 @@ class UsvTrajectory:
         self.angle[0] = angle0 if angle0 is not None else np.zeros(m)
         self.total_traction[0] = total_traction0 if total_traction0 is not None else np.zeros((m, 2))
         self.xyz[0] = xyz0 if xyz0 is not None else np.zeros((m, 3))
+        self.traction_desired[0] = traction_desired0 if traction_desired0 is not None else np.zeros((m, 2))
+        self.ω_vect[0] = ω_vect0 if ω_vect0 is not None else np.zeros((m, 3))
 
         if gen:
             self.running_random_trajectory()
@@ -88,13 +94,13 @@ class UsvTrajectory:
                 direction_sum_force = angle_desired - ((self.φ[i - 1, j] + math.pi) % (2 * math.pi) - math.pi)
 
                 if - ALPHA < direction_sum_force < ALPHA:
-                    traction_desired = np.dot(self.rotation_matrix(2 * (self.φ[i - 1, j] - direction)), sum_force)
+                    self.traction_desired[i,j] = np.dot(self.rotation_matrix(2 * (self.φ[i - 1, j] - direction)), sum_force)
                 elif ALPHA <= direction_sum_force <= math.pi:
-                    traction_desired = np.dot(self.rotation_matrix(self.φ[i - 1, j] - ALPHA - direction), sum_force)
+                    self.traction_desired[i,j] = np.dot(self.rotation_matrix(self.φ[i - 1, j] - ALPHA - direction), sum_force)
                 elif - math.pi <= direction_sum_force <= - ALPHA:
-                    traction_desired = np.dot(self.rotation_matrix(self.φ[i - 1, j] + ALPHA - direction), sum_force)
+                    self.traction_desired[i,j] = np.dot(self.rotation_matrix(self.φ[i - 1, j] + ALPHA - direction), sum_force)
 
-                self.total_traction[i, j] = random_traction * self.random_force() + traction_desired
+                self.total_traction[i, j] = random_traction * self.random_force() + self.traction_desired[i,j]
 
                 if np.linalg.norm(self.total_traction[i, j]) > MAX_THRUST:
                     traction = (self.total_traction[i, j] / np.linalg.norm(self.total_traction[i, j])) * MAX_THRUST
@@ -104,6 +110,7 @@ class UsvTrajectory:
                 force = np.array([traction[0], traction[1], 0])
                 moment_force = np.cross(force, arm)
                 ε_diss = - K_A_DISS * self.ω[i - 1, j]
+                self.ω_vect[i,j] = moment_force / MOMENT_INERTIA
                 self.ε[i, j] = np.linalg.norm(moment_force) * np.sign(moment_force[2]) / MOMENT_INERTIA + 2 * ε_diss
                 self.ω[i, j] = self.ω[i - 1, j] + self.ε[i, j] * self.time.dt
 
@@ -133,4 +140,5 @@ class UsvTrajectory:
         tr_s.ω = self.ω[::step]
         tr_s.ε = self.ε[::step]
         tr_s.xyz = self.xyz[::step]
+        tr_s.ω_vect = self.ω_vect[::step]
         return tr_s
