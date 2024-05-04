@@ -33,7 +33,7 @@ from gym_pybullet_drones.envs.RlHoverAviary import RlHoverAviary
 from gym_pybullet_drones.utils.Logger import Logger
 from gym_pybullet_drones.envs.HoverAviary import HoverAviary
 from gym_pybullet_drones.envs.MultiHoverAviary import MultiHoverAviary
-
+from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_pybullet_drones.utils.utils import sync, str2bool
 from gym_pybullet_drones.utils.enums import ObservationType, ActionType
 
@@ -46,7 +46,7 @@ DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_MA = True
-
+MOD = 'new'
 
 @dataclass(frozen=True)
 class TimeData:
@@ -66,6 +66,7 @@ class TimeData:
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
+        mod=MOD,
         gui=DEFAULT_GUI,
         plot=True,
         colab=DEFAULT_COLAB,
@@ -109,16 +110,21 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     #### Train the model #######################################
     # создаем модель с PPO
-    model = A2C('MlpPolicy',
-                train_env,
-                # tensorboard_log=filename+'/tb/',
-                verbose=1)
+    if mod == "old":
+        path0 = 'results/save-05.04.2024_16.10.35' + '/best_model.zip'
+        model = PPO.load(path0)
+        model.set_env(train_env)
+    else:
+        model = PPO('MlpPolicy',
+                    train_env,
+                    # tensorboard_log=filename+'/tb/',
+                    verbose=1)
 
     #### Target cumulative rewards (problem-dependent) ##########
     target_reward = 8000
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=500, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=300, verbose=1)
     # stop_traning = StopTrainingOnMaxEpisodes(max_episodes=5, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
@@ -158,7 +164,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         path = filename + '/best_model.zip'
     else:
         print("[ERROR]: no model under the specified path", filename)
-    model = A2C.load(path)
+    model = PPO.load(path)
 
     #### Show (and record a video of) the model's performance ##
 
