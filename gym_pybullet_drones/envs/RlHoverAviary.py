@@ -96,14 +96,13 @@ class RlHoverAviary(NewBaseRLAviary):
                          act=act
 
                          )
-        #self.TARGET_POS = self.INIT_XYZS + np.array([[30, 0, 1 / (i + 1)] for i in range(num_drones)])
 
         r1 = np.array([[0, 0], [0, 20], [0, 40], [0, 60]])
         xyz1 = np.array([[0, 0, 0], [0, 20, 0], [0, 40, 0], [0, 60, 0]])
-        phi = np.array([np.random.uniform(0, 2 * math.pi),
-                        np.random.uniform(0, 2 * math.pi),
-                        np.random.uniform(0, 2 * math.pi),
-                        np.random.uniform(0, 2 * math.pi)])
+        phi = np.array([np.random.uniform(-math.pi, math.pi),
+                        np.random.uniform(-math.pi, math.pi),
+                        np.random.uniform(-math.pi, math.pi),
+                        np.random.uniform(-math.pi, math.pi)])
         time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
         self.NUM_USV = 4
         self.trajs = UsvTrajectory(time_data, m=self.NUM_USV, r0=r1, xyz0=xyz1, φ0=phi)
@@ -129,7 +128,7 @@ class RlHoverAviary(NewBaseRLAviary):
         if uav_coord[0, 2] >= 9.5 or uav_coord[1, 2] >= 9.5:
             ret = (10000 / val**2)
         else:
-            ret = 0
+            ret = -0.5
 
         return ret
 
@@ -146,7 +145,7 @@ class RlHoverAviary(NewBaseRLAviary):
                                       self.trajs.ω_vect[self.step_counter-15, i, :]]).reshape(12, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
-        pad_width = ((0, 0), (0, 40))
+        pad_width = ((0, 0), (0, 30))
         padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         observation = np.concatenate((observation, padded_array), axis=0)
         return observation, reward, terminated, truncated, info
@@ -165,7 +164,7 @@ class RlHoverAviary(NewBaseRLAviary):
                                        self.trajs.ω_vect[0, i, :]]).reshape(12, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
-        pad_width = ((0, 0), (0, 40))
+        pad_width = ((0, 0), (0, 30))
         padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         initial_obs = np.concatenate((initial_obs, padded_array), axis=0)
         return initial_obs, initial_info

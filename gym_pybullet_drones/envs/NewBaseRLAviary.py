@@ -115,8 +115,8 @@ class NewBaseRLAviary(BaseAviary):
         else:
             print("[ERROR] in BaseRLAviary._actionSpace()")
             exit()
-        act_lower_bound = np.array([-1 * np.ones(size) for i in range(self.NUM_DRONES)])
-        act_upper_bound = np.array([+1 * np.ones(size) for i in range(self.NUM_DRONES)])
+        act_lower_bound = np.array([-300 * np.ones(size) for i in range(self.NUM_DRONES)])
+        act_upper_bound = np.array([+300 * np.ones(size) for i in range(self.NUM_DRONES)])
         #
         for i in range(self.ACTION_BUFFER_SIZE):
             self.action_buffer.append(np.zeros((self.NUM_DRONES, size)))
@@ -191,7 +191,6 @@ class NewBaseRLAviary(BaseAviary):
             if self.ACT_TYPE == ActionType.RPM:
                 rpm[k, :] = np.array(self.HOVER_RPM * (1 + 0.05 * target))
             elif self.ACT_TYPE == ActionType.PID:
-                target *= 10
                 target[2] = 10
                 state = self._getDroneStateVector(k)
                 next_pos = self._calculateNextStep(

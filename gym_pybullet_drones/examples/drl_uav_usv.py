@@ -43,7 +43,7 @@ DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 
 DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
-DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
+DEFAULT_ACT = ActionType('pid')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_MA = True
 MOD = 'new'
@@ -111,7 +111,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/save-05.04.2024_16.10.35' + '/best_model.zip'
+        path0 = 'results/save-05.05.2024_12.56.39' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
@@ -121,13 +121,12 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                     verbose=1)
 
     #### Target cumulative rewards (problem-dependent) ##########
-    target_reward = 8000
+    target_reward = 4
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=300, verbose=1)
-    # stop_traning = StopTrainingOnMaxEpisodes(max_episodes=5, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=500, verbose=1)
     eval_callback = EvalCallback(eval_env,
-                                 #callback_on_new_best=callback_on_best,
+                                 callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
                                  n_eval_episodes=10,
@@ -158,10 +157,10 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     if local:
         input("Press Enter to continue...")
 
-    # if os.path.isfile(filename+'/final_model.zip'):
-    #     path = filename+'/final_model.zip'
-    if os.path.isfile(filename + '/best_model.zip'):
-        path = filename + '/best_model.zip'
+    if os.path.isfile(filename+'/final_model.zip'):
+        path = filename+'/final_model.zip'
+    # if os.path.isfile(filename + '/best_model.zip'):
+    #     path = filename + '/best_model.zip'
     else:
         print("[ERROR]: no model under the specified path", filename)
     model = PPO.load(path)
