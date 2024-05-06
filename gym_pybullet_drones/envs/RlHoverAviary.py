@@ -128,7 +128,7 @@ class RlHoverAviary(NewBaseRLAviary):
         if uav_coord[0, 2] >= 9.5 or uav_coord[1, 2] >= 9.5:
             ret = (10000 / val**2)
         else:
-            ret = -0.5
+            ret = 0
 
         return ret
 
@@ -145,7 +145,7 @@ class RlHoverAviary(NewBaseRLAviary):
                                       self.trajs.ω_vect[self.step_counter-15, i, :]]).reshape(12, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
-        pad_width = ((0, 0), (0, 30))
+        pad_width = ((0, 0), (0, 40))
         padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         observation = np.concatenate((observation, padded_array), axis=0)
         return observation, reward, terminated, truncated, info
@@ -164,7 +164,7 @@ class RlHoverAviary(NewBaseRLAviary):
                                        self.trajs.ω_vect[0, i, :]]).reshape(12, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
-        pad_width = ((0, 0), (0, 30))
+        pad_width = ((0, 0), (0, 40))
         padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         initial_obs = np.concatenate((initial_obs, padded_array), axis=0)
         return initial_obs, initial_info

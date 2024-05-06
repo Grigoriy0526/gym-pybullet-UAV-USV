@@ -73,9 +73,6 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         record_video=DEFAULT_RECORD_VIDEO,
         local=True):
     # создаем файл
-    filename = os.path.join(output_folder, 'save-' + datetime.now().strftime("%m.%d.%Y_%H.%M.%S"))
-    if not os.path.exists(filename):
-        os.makedirs(filename + '/')
 
     INIT_XYZS = np.array([
         [0, 10, 10],
@@ -86,83 +83,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         [0, 0, np.pi / 3]
     ])
 
-    # в зависимости много аппартов или один создаем средудля обучения и среду для оценки
-
-    train_env = make_vec_env(RlHoverAviary,
-                             env_kwargs=dict(num_drones=DEFAULT_AGENTS,
-                                             initial_xyzs=INIT_XYZS,
-                                             initial_rpys=INIT_RPYS,
-                                             obs=DEFAULT_OBS,
-                                             act=DEFAULT_ACT
-                                             ),
-                             n_envs=1,
-                             seed=0)
-
-    eval_env = RlHoverAviary(num_drones=DEFAULT_AGENTS,
-                             initial_xyzs=INIT_XYZS,
-                             initial_rpys=INIT_RPYS,
-                             obs=DEFAULT_OBS,
-                             act=DEFAULT_ACT)
-
-    #### Check the environment's spaces ########################
-    print('[INFO] Action space:', train_env.action_space)
-    print('[INFO] Observation space:', train_env.observation_space)
-
-    #### Train the model #######################################
-    # создаем модель с PPO
-    if mod == "old":
-        path0 = 'results/save-05.06.2024_21.59.27' + '/final_model.zip'
-        model = PPO.load(path0)
-        model.set_env(train_env)
-    else:
-        model = PPO('MlpPolicy',
-                    train_env,
-                    # tensorboard_log=filename+'/tb/',
-                    verbose=1)
-
-    #### Target cumulative rewards (problem-dependent) ##########
-    target_reward = 4
-
-    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=200, verbose=1)
-    eval_callback = EvalCallback(eval_env,
-                                 callback_on_new_best=callback_on_best,
-                                 callback_after_eval=stop_traning,
-                                 verbose=1,
-                                 n_eval_episodes=10,
-                                 best_model_save_path=filename + '/',
-                                 log_path=filename + '/',
-                                 eval_freq=int(1000),
-                                 deterministic=True,
-                                 render=False)
-    model.learn(total_timesteps=int(1e7) if local else int(1e2),  # shorter training in GitHub Actions pytest
-                callback=eval_callback,
-                log_interval=100)
-
-    #### Save the model ########################################
-    model.save(filename + '/final_model.zip')
-    print(filename)
-
-    #### Print training progression ############################
-    with np.load(filename + '/evaluations.npz') as data:
-        for j in range(data['timesteps'].shape[0]):
-            print(str(data['timesteps'][j]) + "," + str(data['results'][j][0]))
-
-    ############################################################
-    ############################################################
-    ############################################################
-    ############################################################
-    ############################################################
-
-    if local:
-        input("Press Enter to continue...")
-
-    if os.path.isfile(filename+'/final_model.zip'):
-        path = filename+'/final_model.zip'
-    # if os.path.isfile(filename + '/best_model.zip'):
-    #     path = filename + '/best_model.zip'
-    else:
-        print("[ERROR]: no model under the specified path", filename)
+    path = 'results/save-05.06.2024_21.23.13' + '/best_model.zip'
     model = PPO.load(path)
 
     #### Show (and record a video of) the model's performance ##
