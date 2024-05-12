@@ -136,7 +136,7 @@ def run(
         #### Step the simulation ###################################
         obs, reward, terminated, truncated, info = env.step(action)
         function = lambda x: LossFunction.communication_quality_function(x.reshape(1, num_drone, 3), usv_coord[i, :, :].reshape(1, 4, 3))
-        optimized = minimize(function, opt_x[i-1].reshape(1, -1))
+        optimized = minimize(function, opt_x[i-1].reshape(6,))
         opt_x[i] = optimized.x.reshape(num_drone, 3)
 
         #### Compute control for the current way point #############
@@ -144,7 +144,7 @@ def run(
         d_err = opt_x[i] - np.transpose(np.array([obs[:, 0], obs[:, 1], obs[:, 2]]), (1, 0))
 
         for j in range(num_drone):
-            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], 0, 3]
+            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], 0, 0.1]
             action[j, :] = TARGET_VEL[j, i, :]
 
         #### Go to the next way point and loop #####################
@@ -172,6 +172,7 @@ def run(
     #### Plot the simulation results ###########################
     #logger.save_as_csv("vel") # Optional CSV save
     if plot:
+        logger.plot()
         logger.plot_trajct(trajs=trajs)
 
 if __name__ == "__main__":

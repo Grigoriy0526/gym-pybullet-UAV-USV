@@ -23,6 +23,7 @@ import argparse
 import gymnasium as gym
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 from stable_baselines3 import PPO, DDPG, A2C
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnRewardThreshold, StopTrainingOnMaxEpisodes, \
@@ -35,34 +36,18 @@ from gym_pybullet_drones.envs.HoverAviary import HoverAviary
 from gym_pybullet_drones.envs.MultiHoverAviary import MultiHoverAviary
 from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_pybullet_drones.utils.utils import sync, str2bool
-from gym_pybullet_drones.utils.enums import ObservationType, ActionType
+from gym_pybullet_drones.utils.enums import ObservationType, ActionType, DroneModel, Physics
 
 DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
-
+DRONE_MODEL = DroneModel.CF2P
 DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
-DEFAULT_MA = True
+DEFAULT_PHYSICS = Physics.PYB
 MOD = 'new'
-
-@dataclass(frozen=True)
-class TimeData:
-    T: float  # длительность во времени
-    fs: int  # частота дискретизации
-    n: int = field(init=False)  # число отсчетов
-    dt: float = field(init=False)  # длительность отсчета времени
-    t: np.ndarray = field(init=False)  # отсчеты времени
-
-    def __post_init__(self):
-        object.__setattr__(self, 'n', int(self.T * self.fs))
-        object.__setattr__(self, 'dt', 1 / self.fs)
-        object.__setattr__(self, 't', np.arange(self.n) * self.dt)
-
-    def sample(self, fs):
-        return TimeData(T=self.T, fs=fs)
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
@@ -78,18 +63,18 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         os.makedirs(filename + '/')
 
     INIT_XYZS = np.array([
-        [0, 10, 10],
-        [0, 50, 10]
+        [0, 50, 10],
+        [0, 90, 10]
     ])
     INIT_RPYS = np.array([
         [0, 0, 0],
-        [0, 0, np.pi / 3]
+        [0, 0, 0]
     ])
-
-    # в зависимости много аппартов или один создаем средудля обучения и среду для оценки
 
     train_env = make_vec_env(RlHoverAviary,
                              env_kwargs=dict(num_drones=DEFAULT_AGENTS,
+                                             drone_model=DRONE_MODEL,
+                                             physics=DEFAULT_PHYSICS,
                                              initial_xyzs=INIT_XYZS,
                                              initial_rpys=INIT_RPYS,
                                              obs=DEFAULT_OBS,
@@ -99,6 +84,8 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                              seed=0)
 
     eval_env = RlHoverAviary(num_drones=DEFAULT_AGENTS,
+                             drone_model=DRONE_MODEL,
+                             physics=DEFAULT_PHYSICS,
                              initial_xyzs=INIT_XYZS,
                              initial_rpys=INIT_RPYS,
                              obs=DEFAULT_OBS,
@@ -111,33 +98,72 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/save-05.06.2024_21.59.27' + '/final_model.zip'
+        path0 = 'results/ppo_100_2-1drag' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
         model = PPO('MlpPolicy',
                     train_env,
-                    # tensorboard_log=filename+'/tb/',
+
+                    #n_steps= 1000,     #2048
+                    #batch_size=8000, #64
+                    #gamma=0.6, #0.99
+                    #learning_rate=0.0001, #0.0003
+                    ent_coef=0.05, #0.0
+                    #vf_coef=
+                    #tensorboard_log=filename+'/tb/',
                     verbose=1)
 
     #### Target cumulative rewards (problem-dependent) ##########
-    target_reward = 4
+    target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=1500, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=500, verbose=1)
     eval_callback = EvalCallback(eval_env,
-                                 callback_on_new_best=callback_on_best,
+                                 #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
-                                 n_eval_episodes=10,
+                                 n_eval_episodes=5,
                                  best_model_save_path=filename + '/',
                                  log_path=filename + '/',
                                  eval_freq=int(1000),
                                  deterministic=True,
                                  render=False)
+    # steps = 0
+    #
+    # while steps < 5:
+    #     filename = os.path.join(output_folder, 'save-' + datetime.now().strftime("%m.%d.%Y_%H.%M.%S"))
+    #     if not os.path.exists(filename):
+    #         os.makedirs(filename + '/')
+    #     if steps == 0:
+    #         model = PPO('MlpPolicy',
+    #                     train_env,
+    #                     # n_steps=  4096,
+    #                     # learning_rate=0.001,
+    #                     # ent_coef=0.001,
+    #                     # tensorboard_log=filename+'/tb/',
+    #                     verbose=1)
+    #     else:
+    #         directory = 'results/'
+    #          #files = os.listdir(directory)
+    #         # files.sort(key=os.path.getmtime)
+    #         subdirectories = [x for x in os.listdir(directory) if os.path.isdir(os.path.join(directory, x))]
+    #         subdirectories.sort(key=lambda x: os.path.getctime(os.path.join(directory, x)))
+    #         last_file = subdirectories[-2]
+    #         print(last_file)
+    #         path0 = 'results/' + last_file + '/best_model.zip'
+    #         model = PPO.load(path0)
+    #         model.set_env(train_env)
+    #
+    #     model.learn(total_timesteps=int(1e4) if local else int(1e2),  # shorter training in GitHub Actions pytest
+    #             callback=eval_callback,
+    #             log_interval=100)
+    #     #model.save(filename + '/final_model.zip')
+    #
+    #     steps += 1
     model.learn(total_timesteps=int(1e7) if local else int(1e2),  # shorter training in GitHub Actions pytest
-                callback=eval_callback,
-                log_interval=100)
+                            callback=eval_callback,
+                            log_interval=100)
 
     #### Save the model ########################################
     model.save(filename + '/final_model.zip')
@@ -148,6 +174,9 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         for j in range(data['timesteps'].shape[0]):
             print(str(data['timesteps'][j]) + "," + str(data['results'][j][0]))
 
+    df = np.load(filename + '/evaluations.npz')
+
+
     ############################################################
     ############################################################
     ############################################################
@@ -157,10 +186,10 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     if local:
         input("Press Enter to continue...")
 
-    if os.path.isfile(filename+'/final_model.zip'):
-        path = filename+'/final_model.zip'
-    # if os.path.isfile(filename + '/best_model.zip'):
-    #     path = filename + '/best_model.zip'
+    # if os.path.isfile(filename+'/final_model.zip'):
+    #     path = filename+'/final_model.zip'
+    if os.path.isfile(filename + '/best_model.zip'):
+        path = filename + '/best_model.zip'
     else:
         print("[ERROR]: no model under the specified path", filename)
     model = PPO.load(path)
@@ -169,12 +198,16 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     test_env = RlHoverAviary(gui=gui,
                              num_drones=DEFAULT_AGENTS,
+                             drone_model=DRONE_MODEL,
                              initial_xyzs=INIT_XYZS,
                              initial_rpys=INIT_RPYS,
+                             physics=DEFAULT_PHYSICS,
                              obs=DEFAULT_OBS,
                              act=DEFAULT_ACT,
                              record=record_video)
     test_env_nogui = RlHoverAviary(num_drones=DEFAULT_AGENTS, initial_xyzs=INIT_XYZS,
+                                   drone_model=DRONE_MODEL,
+                                   physics=DEFAULT_PHYSICS,
                                    initial_rpys=INIT_RPYS, obs=DEFAULT_OBS, act=DEFAULT_ACT)
 
     logger = Logger(logging_freq_hz=int(test_env.CTRL_FREQ),
@@ -185,7 +218,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     mean_reward, std_reward = evaluate_policy(model,
                                               test_env_nogui,
-                                              n_eval_episodes=10
+                                              n_eval_episodes=30
                                               )
     print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
 
@@ -198,15 +231,15 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         obs, reward, terminated, truncated, info = test_env.step(action)
         # obs2 = obs.squeeze()
         # act2 = action.squeeze()
-        # print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
+        print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
         if DEFAULT_OBS == ObservationType.KIN:
             for d in range(DEFAULT_AGENTS):
                 logger.log(drone=d,
                            timestamp=i / test_env.CTRL_FREQ,
                            state=np.hstack([obs[d][0:3],
-                                            np.zeros(4),
-                                            obs[d][3:15],
+                                            obs[d][3:16],
                                             action[d]
+                                            #np.zeros(1)
                                             ]),
                            control=np.zeros(12)
                            )
@@ -221,7 +254,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     if plot and DEFAULT_OBS == ObservationType.KIN:
         logger.plot()
-        logger.plot_trajct(trajs=test_env.trajs)
+        logger.plot_trajct(trajs=test_env.trajs, df=df)
 
 
 

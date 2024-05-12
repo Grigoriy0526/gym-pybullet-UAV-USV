@@ -28,25 +28,25 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnRewardThreshold, StopTrainingOnMaxEpisodes, \
     StopTrainingOnNoModelImprovement
 from stable_baselines3.common.evaluation import evaluate_policy
-
+import matplotlib.pyplot as plt
 from gym_pybullet_drones.envs.RlHoverAviary import RlHoverAviary
 from gym_pybullet_drones.utils.Logger import Logger
 from gym_pybullet_drones.envs.HoverAviary import HoverAviary
 from gym_pybullet_drones.envs.MultiHoverAviary import MultiHoverAviary
 from stable_baselines3.common.vec_env import DummyVecEnv
 from gym_pybullet_drones.utils.utils import sync, str2bool
-from gym_pybullet_drones.utils.enums import ObservationType, ActionType
+from gym_pybullet_drones.utils.enums import ObservationType, ActionType, Physics, DroneModel
 
 DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
-
+DRONE_MODEL = DroneModel.CF2P
 DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_MA = True
-MOD = 'old'
+MOD = 'new'
 
 @dataclass(frozen=True)
 class TimeData:
@@ -75,28 +75,30 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     # создаем файл
 
     INIT_XYZS = np.array([
-        [0, 10, 10],
-        [0, 50, 10]
+        [0, 50, 10],
+        [0, 90, 10]
     ])
     INIT_RPYS = np.array([
         [0, 0, 0],
-        [0, 0, np.pi / 3]
+        [0, 0, 0]
     ])
-
-    path = 'results/save-05.06.2024_21.23.13' + '/best_model.zip'
-    model = PPO.load(path)
-
+    filename = 'results/PPO_300_20_oldmodel'
+    path0 = filename + '/best_model.zip'
+    model = PPO.load(path0)
+    df = np.load(filename + '/evaluations.npz')
+    # plt.plot(df['timesteps'], df['results'])
     #### Show (and record a video of) the model's performance ##
 
     test_env = RlHoverAviary(gui=gui,
                              num_drones=DEFAULT_AGENTS,
                              initial_xyzs=INIT_XYZS,
                              initial_rpys=INIT_RPYS,
+                             drone_model=DRONE_MODEL,
                              obs=DEFAULT_OBS,
                              act=DEFAULT_ACT,
                              record=record_video)
     test_env_nogui = RlHoverAviary(num_drones=DEFAULT_AGENTS, initial_xyzs=INIT_XYZS,
-                                   initial_rpys=INIT_RPYS, obs=DEFAULT_OBS, act=DEFAULT_ACT)
+                                   initial_rpys=INIT_RPYS, drone_model=DRONE_MODEL, obs=DEFAULT_OBS, act=DEFAULT_ACT)
 
     logger = Logger(logging_freq_hz=int(test_env.CTRL_FREQ),
                     num_drones=DEFAULT_AGENTS,
@@ -106,7 +108,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     mean_reward, std_reward = evaluate_policy(model,
                                               test_env_nogui,
-                                              n_eval_episodes=10
+                                              n_eval_episodes=50
                                               )
     print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
 
@@ -125,8 +127,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                 logger.log(drone=d,
                            timestamp=i / test_env.CTRL_FREQ,
                            state=np.hstack([obs[d][0:3],
-                                            np.zeros(4),
-                                            obs[d][3:15],
+                                            obs[d][3:16],
                                             action[d]
                                             ]),
                            control=np.zeros(12)
@@ -142,7 +143,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     if plot and DEFAULT_OBS == ObservationType.KIN:
         logger.plot()
-        logger.plot_trajct(trajs=test_env.trajs)
+        logger.plot_trajct(trajs=test_env.trajs, df=df)
 
 
 

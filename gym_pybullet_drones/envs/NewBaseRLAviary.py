@@ -74,9 +74,10 @@ class NewBaseRLAviary(BaseAviary):
         if act in [ActionType.PID, ActionType.VEL, ActionType.ONE_D_PID]:
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
             if drone_model in [DroneModel.CF2X, DroneModel.CF2P]:
-                self.ctrl = [DSLPIDControl(drone_model=DroneModel.CF2X) for i in range(num_drones)]
+                self.ctrl = [DSLPIDControl(drone_model=DroneModel.CF2P) for i in range(num_drones)]
             else:
                 print("[ERROR] in BaseRLAviary.__init()__, no controller is available for the specified drone_model")
+
         super().__init__(drone_model=drone_model,
                          num_drones=num_drones,
                          neighbourhood_radius=neighbourhood_radius,
@@ -94,6 +95,7 @@ class NewBaseRLAviary(BaseAviary):
         #### Set a limit on the maximum target speed ###############
         if act == ActionType.VEL:
             self.SPEED_LIMIT = 0.03 * self.MAX_SPEED_KMH * (1000 / 3600)
+        self.DRONE_MODEL = drone_model
 
     ################################################################################
 
@@ -115,8 +117,8 @@ class NewBaseRLAviary(BaseAviary):
         else:
             print("[ERROR] in BaseRLAviary._actionSpace()")
             exit()
-        act_lower_bound = np.array([-500 * np.ones(size) for i in range(self.NUM_DRONES)])
-        act_upper_bound = np.array([+500 * np.ones(size) for i in range(self.NUM_DRONES)])
+        act_lower_bound = np.array([-1 * np.ones(size) for i in range(self.NUM_DRONES)])
+        act_upper_bound = np.array([+1 * np.ones(size) for i in range(self.NUM_DRONES)])
         #
         for i in range(self.ACTION_BUFFER_SIZE):
             self.action_buffer.append(np.zeros((self.NUM_DRONES, size)))
@@ -186,13 +188,12 @@ class NewBaseRLAviary(BaseAviary):
         """
         self.action_buffer.append(action)
         rpm = np.zeros((self.NUM_DRONES, 4))
+
         for k in range(action.shape[0]):
             target = action[k, :]
             if self.ACT_TYPE == ActionType.RPM:
                 rpm[k, :] = np.array(self.HOVER_RPM * (1 + 0.05 * target))
             elif self.ACT_TYPE == ActionType.PID:
-                #target[2] = 10
-                #print("Target", target)
                 state = self._getDroneStateVector(k)
                 next_pos = self._calculateNextStep(
                     current_position=state[0:3],
@@ -204,26 +205,42 @@ class NewBaseRLAviary(BaseAviary):
                                                           cur_quat=state[3:7],
                                                           cur_vel=state[10:13],
                                                           cur_ang_vel=state[13:16],
-                                                          target_pos=next_pos
+                                                          target_pos=np.array([next_pos[0]*100, next_pos[1]*100, 10])
                                                           )
                 rpm[k, :] = rpm_k
             elif self.ACT_TYPE == ActionType.VEL:
-                #target[2] = 0
-                state = self._getDroneStateVector(k)
-                if np.linalg.norm(target[0:3]) != 0:
-                    v_unit_vector = target[0:3] / np.linalg.norm(target[0:3])
-                else:
-                    v_unit_vector = np.zeros(3)
-                temp, _, _ = self.ctrl[k].computeControl(control_timestep=self.CTRL_TIMESTEP,
-                                                         cur_pos=state[0:3],
-                                                         cur_quat=state[3:7],
-                                                         cur_vel=state[10:13],
-                                                         cur_ang_vel=state[13:16],
-                                                         target_pos=state[0:3],  # same as the current position
-                                                         target_rpy=np.array([0, 0, state[9]]),  # keep current yaw
-                                                         target_vel=np.abs(target[3]) * v_unit_vector
-                                                         # target the desired velocity vector
-                                                         )
+                if self.DRONE_MODEL == DroneModel.CF2X or self.DRONE_MODEL == DroneModel.CF2P:
+                    koef = 8
+                    state = self._getDroneStateVector(k)
+                    if np.linalg.norm(target[:3]) != 0:
+                        v_unit_vector = target[:3] / np.linalg.norm(target[:3])
+                    else:
+                        v_unit_vector = np.zeros(3)
+                    v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, v_unit_vector[2]])
+                    temp, _, _ = self.ctrl[k].computeControl(control_timestep=self.CTRL_TIMESTEP,
+                                                             cur_pos=state[0:3],
+                                                             cur_quat=state[3:7],
+                                                             cur_vel=state[10:13],
+                                                             cur_ang_vel=state[13:16],
+                                                             target_pos=np.array([state[0], state[1], 10]), # same as the current position
+                                                             target_rpy=state[7:10],
+                                                             target_vel= v * self.SPEED_LIMIT * np.abs(target[3])
+                                                             # target the desired velocity vector
+                                                             )
+                elif self.DRONE_MODEL == DroneModel.RACE:
+                    koef = 100
+                    state = self._getDroneStateVector(k)
+                    if np.linalg.norm(target[0:3]) != 0:
+                        v_unit_vector = target[0:3] / np.linalg.norm(target[0:3])
+                    else:
+                        v_unit_vector = np.zeros(2)
+                    v = np.array([v_unit_vector[0] * koef, v_unit_vector[1] * koef, v_unit_vector[2]])
+
+                    temp = self.ctrl[k].computeControlFromState(control_timestep=self.CTRL_TIMESTEP,
+                                                                state=state,
+                                                                target_pos=np.array([state[0], state[1], 40]),
+                                                                target_vel=np.abs(target[3]) * v * self.SPEED_LIMIT
+                                                                )
                 rpm[k, :] = temp
             elif self.ACT_TYPE == ActionType.ONE_D_RPM:
                 rpm[k, :] = np.repeat(self.HOVER_RPM * (1 + 0.05 * target), 4)
@@ -236,6 +253,7 @@ class NewBaseRLAviary(BaseAviary):
                                                         cur_ang_vel=state[13:16],
                                                         target_pos=state[0:3] + 0.1 * np.array([0, 0, target[0]])
                                                         )
+
                 rpm[k, :] = res
             else:
                 print("[ERROR] in BaseRLAviary._preprocessAction()")

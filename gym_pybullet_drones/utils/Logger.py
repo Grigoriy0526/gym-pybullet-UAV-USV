@@ -11,7 +11,6 @@ from scipy.optimize import minimize
 import autograd.numpy as np
 from autograd import grad
 from IPython.display import HTML, display
-
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
 from gym_pybullet_drones.utils.plots_generation import PlotGeneration
 
@@ -60,7 +59,8 @@ class Logger(object):
         self.counters = np.zeros(num_drones)
         self.timestamps = np.zeros((num_drones, duration_sec * self.LOGGING_FREQ_HZ))
         #### Note: this is the suggest information to log ##############################
-        self.states = np.zeros((num_drones, 16, duration_sec * self.LOGGING_FREQ_HZ))  #### 16 states: pos_x,
+        self.states = np.zeros((num_drones, 20, duration_sec * self.LOGGING_FREQ_HZ))  #### 16 states:
+        # pos_x,
         # pos_y,
         # pos_z,
         # vel_x,
@@ -117,7 +117,7 @@ class Logger(object):
         #### Add rows to the matrices if a counter exceeds their size
         if current_counter >= self.timestamps.shape[1]:
             self.timestamps = np.concatenate((self.timestamps, np.zeros((self.NUM_DRONES, 1))), axis=1)
-            self.states = np.concatenate((self.states, np.zeros((self.NUM_DRONES, 16, 1))), axis=2)
+            self.states = np.concatenate((self.states, np.zeros((self.NUM_DRONES, 20, 1))), axis=2)
             self.controls = np.concatenate((self.controls, np.zeros((self.NUM_DRONES, 12, 1))), axis=2)
             # self.coord = np.concatenate((self.coord, np.zeros((self.NUM_DRONES, 16, 1))), axis=2)
         #### Advance a counter is the matrices have overgrown it ###
@@ -126,8 +126,18 @@ class Logger(object):
         #### Log the information and increase the counter ##########
         self.timestamps[drone, current_counter] = timestamp
         #### Re-order the kinematic obs (of most Aviaries) #########
-        self.states[drone, :, current_counter] = np.hstack([state[0:3], state[10:13], state[7:10], state[13:20]])
-        # self.coord[current_counter, drone, :] = np.hstack([state[0:3], state[10:13], state[7:10], state[13:20]])
+        target_vel = state[16:19]
+        koef = 1
+        if np.linalg.norm(target_vel) != 0:
+            v_unit_vector = target_vel / np.linalg.norm(target_vel)
+        else:
+            v_unit_vector = np.zeros(3)
+        v = 0.25 * np.array([v_unit_vector[0]* koef, v_unit_vector[1]*koef, v_unit_vector[2]]) * np.abs([state[19]])
+
+
+        self.states[drone, :, current_counter] = np.hstack([state[0:3], state[6:9], state[3:6], state[9:16], v, state[19]])
+
+        #self.coord[current_counter, drone, :] = np.hstack([state[0:3], state[10:13], state[7:10], state[13:20]])
         self.controls[drone, :, current_counter] = control
         self.counters[drone] = current_counter + 1
 
@@ -233,7 +243,7 @@ class Logger(object):
         """
         #### Loop over colors and line styles ######################
         # plt.rc('axes', prop_cycle=(cycler('color', ['r', 'g', 'b', 'y']) + cycler('linestyle', ['-', '--', ':', '-.'])))
-        fig, axs = plt.subplots(10, 2)
+        fig, axs = plt.subplots(12, 2)
         t = np.arange(0, self.timestamps.shape[1] / self.LOGGING_FREQ_HZ, 1 / self.LOGGING_FREQ_HZ)
 
         #### Column ################################################
@@ -297,6 +307,17 @@ class Logger(object):
         axs[row, col].plot(t, t, label="time")
         axs[row, col].set_xlabel('time')
         axs[row, col].set_ylabel('time')
+        row = 10
+        for j in range(self.NUM_DRONES):
+            axs[row, col].plot(t, self.states[j, 16, :], label="drone_" + str(j))
+        axs[row, col].set_xlabel('time')
+        axs[row, col].set_ylabel('act_x')
+        row = 11
+        for j in range(self.NUM_DRONES):
+            axs[row, col].plot(t, self.states[j, 17, :], label="drone_" + str(j))
+        axs[row, col].set_xlabel('time')
+        axs[row, col].set_ylabel('act_y')
+
 
         #### Column ################################################
         col = 1
@@ -379,11 +400,22 @@ class Logger(object):
         else:
             axs[row, col].set_ylabel('RPM3')
 
+        row = 10
+        for j in range(self.NUM_DRONES):
+            axs[row, col].plot(t, self.states[j, 18, :], label="drone_" + str(j))
+        axs[row, col].set_xlabel('time')
+        axs[row, col].set_ylabel('act_z')
+        row = 11
+        for j in range(self.NUM_DRONES):
+            axs[row, col].plot(t, self.states[j, 19, :], label="drone_" + str(j))
+        axs[row, col].set_xlabel('time')
+        axs[row, col].set_ylabel('act_val')
+
         #### Drawing options #######################################
-        for i in range(10):
+        for i in range(12):
             for j in range(2):
                 axs[i, j].grid(True)
-                axs[i, j].legend(loc='upper right',
+                axs[i, j].legend(loc='upper left',
                                  frameon=True
                                  )
         fig.subplots_adjust(left=0.06,
@@ -399,11 +431,12 @@ class Logger(object):
         else:
             plt.show()
 
-    def plot_trajct(self, trajs=0):
+    def plot_trajct(self, trajs=0, df=None):
 
         PLOT_FS = 20
         SIMULATED_FS = 20
-
+        plt.plot(df['timesteps'], df['results'])
+        plt.show()
         trajs_s = trajs.sample(PLOT_FS)
         step = SIMULATED_FS // PLOT_FS
         uav_c = np.transpose(np.array([self.states[:, 0, :], self.states[:, 1, :], self.states[:, 2, :]]), (2, 1, 0))
@@ -412,7 +445,7 @@ class Logger(object):
         uav_coord_c = uav_coord.copy()
         usv_coord = trajs_s.xyz
         val = LossFunction.communication_quality_function(uav_coord, usv_coord)
-        reward = np.sum(1000 / val**2)
+        reward = np.sum(10000 / val**2)
         print("Reward", reward)
         opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
         opt_x[0] = uav_coord_c[0, :, :]
@@ -425,6 +458,8 @@ class Logger(object):
 
         opt_x[:, :, 2] += 10
         val_opt = LossFunction.communication_quality_function(opt_x, usv_coord)
+        reward_opt = np.sum(10000 / val_opt**2)
+        print("Reward optim alroitm:", reward_opt)
 
         plt.rc('font', size=25)
         plt.rc('axes', titlesize=25)
