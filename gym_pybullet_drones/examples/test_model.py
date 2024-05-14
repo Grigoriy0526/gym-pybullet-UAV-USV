@@ -82,7 +82,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         [0, 0, 0],
         [0, 0, 0]
     ])
-    filename = 'results/PPO_300_20_oldmodel'
+    filename = 'results/PPO_NEW_REWARD_100'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
     df = np.load(filename + '/evaluations.npz')

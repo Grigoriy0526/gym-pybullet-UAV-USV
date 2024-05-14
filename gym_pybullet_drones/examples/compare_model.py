@@ -25,9 +25,12 @@ import pybullet as p
 import matplotlib.pyplot as plt
 import autograd.numpy as np
 from autograd import grad
+from stable_baselines3 import PPO
+
+from gym_pybullet_drones.envs.RlHoverAviary import RlHoverAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
-from gym_pybullet_drones.utils.enums import DroneModel, Physics
+from gym_pybullet_drones.utils.enums import DroneModel, Physics, ObservationType, ActionType
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
 from gym_pybullet_drones.utils.Logger import Logger
@@ -35,18 +38,18 @@ from gym_pybullet_drones.utils.utils import sync, str2bool
 from scipy.optimize import minimize
 from gym_pybullet_drones.envs.VelocityAviary import VelocityAviary
 
-DEFAULT_DRONE = DroneModel("cf2x")
+DEFAULT_DRONE = DroneModel("cf2p")
 DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_PLOT = True
 DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = False
 DEFAULT_SIMULATION_FREQ_HZ = 300
-DEFAULT_CONTROL_FREQ_HZ = 300
+DEFAULT_CONTROL_FREQ_HZ = 60
 DEFAULT_DURATION_SEC = 20
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
-NUM_DRONE = 2
+NUM_DRONE = 4
 
 from dataclasses import dataclass, field
 from functools import cache
@@ -67,6 +70,17 @@ class TimeData:
   def sample(self, fs):
     return TimeData(T=self.T, fs=fs)
 
+
+DEFAULT_GUI = False
+DEFAULT_RECORD_VIDEO = False
+DEFAULT_OUTPUT_FOLDER = 'results'
+DEFAULT_COLAB = False
+DRONE_MODEL = DroneModel.CF2P
+DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
+DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
+DEFAULT_AGENTS = 2
+DEFAULT_MA = True
+MOD = 'new'
 def run(
         drone=DEFAULT_DRONE,
         gui=DEFAULT_GUI,
@@ -79,17 +93,30 @@ def run(
         duration_sec=DEFAULT_DURATION_SEC,
         output_folder=DEFAULT_OUTPUT_FOLDER,
         colab=DEFAULT_COLAB,
-        num_drone=NUM_DRONE
+        num_drone=NUM_DRONE,
+        trajs=None
         ):
         #### Initialize the simulation #############################
     INIT_XYZS = np.array([
+                          [10, 10, 10],
+                          [10, 50, 10],
                           [0, 10, 10],
                           [0, 50, 10]
                           ])
     INIT_RPYS = np.array([
                           [0, 0, 0],
-                          [0, 0, np.pi/3]
+                          [0, 0, 0],
+                          [0, 0, 0],
+                          [0, 0, 0]
                           ])
+    INIT_XYZS_0 = np.array([
+        [0, 10, 10],
+        [0, 50, 10]
+    ])
+    INIT_RPYS_0 = np.array([
+        [0, 0, 0],
+        [0, 0, 0]
+    ])
 
     xyz1 = np.array([[0, 0, 0], [0, 20, 0], [0, 40, 0], [0, 60, 0]])
     phi = np.array([np.random.uniform(-math.pi, math.pi),
@@ -98,9 +125,10 @@ def run(
                     np.random.uniform(-math.pi, math.pi)])
     time_data = TimeData(duration_sec, simulation_freq_hz)
     trajs = UsvTrajectory(time_data, m=4, r0=xyz1[:, 0:2], xyz0=xyz1, φ0=phi)
+
     #### Create the environment ################################
     env = VelocityAviary(drone_model=drone,
-                         num_drones=num_drone,
+                         num_drones=4,
                          initial_xyzs=INIT_XYZS,
                          initial_rpys=INIT_RPYS,
                          physics=Physics.PYB,
@@ -113,12 +141,25 @@ def run(
                          user_debug_gui=user_debug_gui
                          )
 
-    #### Compute number of control steps in the simlation ######
+    ppo_env = RlHoverAviary(gui=gui,
+                             num_drones=2,
+                             initial_xyzs=INIT_XYZS_0,
+                             initial_rpys=INIT_RPYS_0,
+                             drone_model=DRONE_MODEL,
+                             obs=DEFAULT_OBS,
+                             act=DEFAULT_ACT,
+                             record=record_video,
+                             traj_uav=trajs
+                            )
 
+    filename = 'results/PPO_NEW_REWARD_300_2'
+    path0 = filename + '/best_model.zip'
+    model = PPO.load(path0)
+
+    #### Compute number of control steps in the simlation ######
     PERIOD = duration_sec
     NUM_WP = control_freq_hz*PERIOD
     wp_counters = np.array([0 for i in range(4)])
-
 
     #### Initialize the velocity target ############
     TARGET_VEL = np.zeros((num_drone, NUM_WP, 4))
@@ -134,30 +175,39 @@ def run(
     action = np.zeros((num_drone, 4))
     START = time.time()
     usv_coord = trajs.xyz
-    opt_x = np.zeros((usv_coord.shape[0], num_drone, 3))
-    opt_x[0] = INIT_XYZS
+    opt_x = np.zeros((usv_coord.shape[0], 2, 3))
+    opt_x[0] = INIT_XYZS_0
+
+    obs_rl, info_el = ppo_env.reset(seed=42, options={})
     for i in range(1, int(duration_sec*env.CTRL_FREQ)):
 
         #### Step the simulation ###################################
         obs, reward, terminated, truncated, info = env.step(action)
-        function = lambda x: LossFunction.communication_quality_function(x.reshape(1, num_drone, 3), usv_coord[i, :, :].reshape(1, 4, 3))
-        optimized = minimize(function, opt_x[i-1].reshape(6,))
-        opt_x[i] = optimized.x.reshape(num_drone, 3)
+        function = lambda x: LossFunction.communication_quality_function(x.reshape(1, 2, 3),
+                                                                         usv_coord[i, :, :].reshape(1, 4, 3))
+        optimized = minimize(function, opt_x[i - 1].reshape(6, ))
+        opt_x[i] = optimized.x.reshape(2, 3)
+        d_err = opt_x[i] - np.transpose(np.array([obs[0:2, 0], obs[0:2, 1], obs[0:2, 2]]), (1, 0))
+        for j in range(2):
+            TARGET_VEL[j, i, :] = np.array([d_err[j, 0], d_err[j, 1], 0, 5])
+        action[0:2, :] = TARGET_VEL[0:2, i, :]
 
-        #### Compute control for the current way point #############
 
-        d_err = opt_x[i] - np.transpose(np.array([obs[:, 0], obs[:, 1], obs[:, 2]]), (1, 0))
 
-        for j in range(num_drone):
-            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], 0, 5]
-            action[j, :] = TARGET_VEL[j, i, :]
+
+        obs_rl, _, _, _, _ = ppo_env.step(action[2:, :])
+        TARGET_VEL[2:, i, :], _states = model.predict(obs_rl,
+                                            deterministic=True
+                                            )
+        action[2:, :] = TARGET_VEL[2:, i, :]
+
 
         #### Go to the next way point and loop #####################
         for j in range(num_drone):
             wp_counters[j] = wp_counters[j] + 1 if wp_counters[j] < (NUM_WP-1) else 0
 
         #### Log the simulation ####################################
-        for j in range(num_drone):
+        for j in range(4):
             logger.log(drone=j,
                        timestamp=i/env.CTRL_FREQ,
                        state=obs[j],
@@ -178,7 +228,7 @@ def run(
     #logger.save_as_csv("vel") # Optional CSV save
     if plot:
         logger.plot()
-        logger.plot_trajct(trajs=trajs)
+        logger.plot_trajct_compare(trajs=trajs)
 
 if __name__ == "__main__":
     #### Define and parse (optional) arguments for the script ##

@@ -21,8 +21,8 @@ class NewBaseRLAviary(BaseAviary):
                  initial_xyzs=None,
                  initial_rpys=None,
                  physics: Physics = Physics.PYB,
-                 pyb_freq: int = 240,
-                 ctrl_freq: int = 240,
+                 pyb_freq: int = 300,
+                 ctrl_freq: int = 60,
                  gui=False,
                  record=False,
                  obs: ObservationType = ObservationType.KIN,
@@ -64,7 +64,7 @@ class NewBaseRLAviary(BaseAviary):
 
         """
         #### Create a buffer for the last .5 sec of actions ########
-        self.ACTION_BUFFER_SIZE = int(ctrl_freq // 2)
+        self.ACTION_BUFFER_SIZE = int(20 // 2)
         self.action_buffer = deque(maxlen=self.ACTION_BUFFER_SIZE)
         ####
         vision_attributes = True if obs == ObservationType.RGB else False
@@ -210,7 +210,7 @@ class NewBaseRLAviary(BaseAviary):
                 rpm[k, :] = rpm_k
             elif self.ACT_TYPE == ActionType.VEL:
                 if self.DRONE_MODEL == DroneModel.CF2X or self.DRONE_MODEL == DroneModel.CF2P:
-                    koef = 8
+                    koef = 10
                     state = self._getDroneStateVector(k)
                     if np.linalg.norm(target[:3]) != 0:
                         v_unit_vector = target[:3] / np.linalg.norm(target[:3])

@@ -431,12 +431,10 @@ class Logger(object):
         else:
             plt.show()
 
-    def plot_trajct(self, trajs=0, df=None):
+    def plot_trajct_compare(self, trajs=0, df=None):
 
         PLOT_FS = 20
-        SIMULATED_FS = 20
-        plt.plot(df['timesteps'], df['results'])
-        plt.show()
+        SIMULATED_FS = 60
         trajs_s = trajs.sample(PLOT_FS)
         step = SIMULATED_FS // PLOT_FS
         uav_c = np.transpose(np.array([self.states[:, 0, :], self.states[:, 1, :], self.states[:, 2, :]]), (2, 1, 0))
@@ -444,24 +442,30 @@ class Logger(object):
         uav_coord = uav_c[::step]
         uav_coord_c = uav_coord.copy()
         usv_coord = trajs_s.xyz
-        val = LossFunction.communication_quality_function(uav_coord, usv_coord)
-        reward = np.sum(10000 / val**2)
-        print("Reward", reward)
-        opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
-        opt_x[0] = uav_coord_c[0, :, :]
+        val_gd = LossFunction.communication_quality_function(uav_coord[:, 0:2, :], usv_coord)
+        val_rl = LossFunction.communication_quality_function(uav_coord[:, 2:, :], usv_coord)
+        reward_gd = np.sum(10000 / val_gd**2)
+        print("Reward GD:", reward_gd)
+        reward_rl = np.sum(10000 / val_rl ** 2)
+        print("Reward RL:", reward_rl)
+        opt_x = np.zeros((usv_coord.shape[0], 2, 3))
+        opt_x[0] = uav_coord_c[0, 2:, :]
         for i in range(1, usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
+            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, 2, 3),
                                                                              usv_coord[i, :, :].reshape(1, 4, 3))
-            a = opt_x[i - 1].reshape(1, -1)
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
-            opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
+            opt_x[i] += optimized.x.reshape(2, 3)
 
         opt_x[:, :, 2] += 10
         val_opt = LossFunction.communication_quality_function(opt_x, usv_coord)
         reward_opt = np.sum(10000 / val_opt**2)
         print("Reward optim alroitm:", reward_opt)
+        new_reward_gd = np.sum(1 / (val_gd - val_opt))
+        print("New reward GD:", new_reward_gd)
+        new_reward_rl = np.sum(1 / (val_rl - val_opt))
+        print("New reward RL:", new_reward_rl)
 
-        plt.rc('font', size=25)
+        plt.rc('font', size=20)
         plt.rc('axes', titlesize=25)
         plt.rc('axes', labelsize=25)
         plt.rc('legend', fontsize=25)
@@ -469,11 +473,14 @@ class Logger(object):
         fig = plt.figure(figsize=(40, 20))
         ax = fig.add_subplot(121)
         plots_usv = []
-        plots_uav = []
+        plots_uav_gd = []
+        plots_uav_rl = []
         plots_uav_opt = []
+
         PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "USV", 3.0)
-        PlotGeneration.created_plot(plots_uav, ax, self.NUM_DRONES, uav_coord, "UAV", 7.0)
-        PlotGeneration.created_plot(plots_uav_opt, ax, self.NUM_DRONES, opt_x, "UAV_OPT", 3.0)
+        PlotGeneration.created_plot(plots_uav_gd, ax, 2, uav_coord[:, 0:2, :], "UAV_GD", 7.0)
+        PlotGeneration.created_plot(plots_uav_rl, ax, 2, uav_coord[:, 2:, :], "UAV_RL", 7.0)
+        PlotGeneration.created_plot(plots_uav_opt, ax, 2, opt_x, "UAV_OPT", 3.0)
 
         ax.set_xlabel('  x, м')
         ax.set_ylabel('  y, м')
@@ -486,22 +493,29 @@ class Logger(object):
 
         ax2 = fig.add_subplot(122)
         ax2.set(xlim=[0, trajs_s.time.n],
-                ylim=[0, np.max(val)])
+                ylim=[0, np.max(val_rl)])
         ax2.set_title("Функция качества связи")
+        ax2.set_xlabel('  Время, сек')
+        ax2.set_ylabel('  F')
         ax2.grid()
 
         def update(frame):
             start_frame = max(0, frame - 100)
             start_frame_uav = max(0, frame - 10)
             PlotGeneration.update_animation(start_frame, frame, usv_coord, plots_usv)
-            PlotGeneration.update_animation(start_frame_uav, frame, uav_coord, plots_uav)
+            PlotGeneration.update_animation(start_frame_uav, frame, uav_coord, plots_uav_gd)
+            PlotGeneration.update_animation(start_frame_uav, frame, uav_coord, plots_uav_rl)
             PlotGeneration.update_animation(start_frame_uav, frame, opt_x, plots_uav_opt)
 
-            plot_val = []
+
+            plot_val_gd = []
+            plot_val_rl = []
             plot_opt_val = []
-            plot_val += ax2.plot(val[:frame], "b")
+
+            plot_val_gd += ax2.plot(val_gd[:frame], "b")
+            plot_val_rl += ax2.plot(val_rl[:frame], "g")
             plot_opt_val += ax2.plot(val_opt[:frame], "r")
-            full_plots = plots_usv + plots_uav + plot_val + plots_uav_opt + plot_opt_val
+            full_plots = plots_usv + plots_uav_gd + plots_uav_rl + plot_val_gd + plot_val_rl + plots_uav_opt + plot_opt_val
             return full_plots
 
         ani1 = animation.FuncAnimation(fig, update, frames=trajs_s.time.n, blit=True, interval=100)
@@ -515,3 +529,93 @@ class Logger(object):
             plt.show()
 
         plt.close(fig)
+
+    def plot_trajct(self, trajs=0, df=None):
+
+            PLOT_FS = 20
+            SIMULATED_FS = 60
+            plt.plot(df['timesteps'], df['results'])
+            plt.title('Эффективность обучения алгоритма PPO')
+            plt.xlabel('Число эризодов')
+            plt.ylabel('Сумарная награда за эипизод')
+            plt.show()
+            trajs_s = trajs.sample(PLOT_FS)
+            step = SIMULATED_FS // PLOT_FS
+            uav_c = np.transpose(np.array([self.states[:, 0, :], self.states[:, 1, :], self.states[:, 2, :]]),
+                                 (2, 1, 0))
+
+            uav_coord = uav_c[::step]
+            uav_coord_c = uav_coord.copy()
+            usv_coord = trajs_s.xyz
+            val = LossFunction.communication_quality_function(uav_coord, usv_coord)
+            reward = np.sum(10000 / val ** 2)
+            print("Reward", reward)
+            opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
+            opt_x[0] = uav_coord_c[0, :, :]
+            for i in range(1, usv_coord.shape[0]):
+                loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
+                                                                                  usv_coord[i, :, :].reshape(1, 4, 3))
+                a = opt_x[i - 1].reshape(1, -1)
+                optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
+                opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
+
+            opt_x[:, :, 2] += 10
+            val_opt = LossFunction.communication_quality_function(opt_x, usv_coord)
+            reward_opt = np.sum(10000 / val_opt ** 2)
+            print("Reward optim alroitm:", reward_opt)
+
+            plt.rc('font', size=25)
+            plt.rc('axes', titlesize=25)
+            plt.rc('axes', labelsize=25)
+            plt.rc('legend', fontsize=25)
+            plt.rc('figure', titlesize=1000)
+            fig = plt.figure(figsize=(40, 20))
+            ax = fig.add_subplot(121)
+            plots_usv = []
+            plots_uav = []
+            plots_uav_opt = []
+            PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "USV", 3.0)
+            PlotGeneration.created_plot(plots_uav, ax, self.NUM_DRONES, uav_coord, "UAV", 7.0)
+            PlotGeneration.created_plot(plots_uav_opt, ax, self.NUM_DRONES, opt_x, "UAV_OPT", 3.0)
+
+            ax.set_xlabel('  x, м')
+            ax.set_ylabel('  y, м')
+            ax.set_title('Траектории')
+            tr_min = np.min(usv_coord, axis=(0, 1))
+            tr_max = np.max(usv_coord, axis=(0, 1))
+            ax.set(xlim=[tr_min[0], tr_max[0]],
+                   ylim=[tr_min[1], tr_max[1]])
+            ax.legend(fontsize=10)
+
+            ax2 = fig.add_subplot(122)
+            ax2.set(xlim=[0, trajs_s.time.n],
+                    ylim=[0, np.max(val)])
+            ax2.set_title("Функция качества связи")
+            ax2.grid()
+
+            def update(frame):
+                start_frame = max(0, frame - 100)
+                start_frame_uav = max(0, frame - 10)
+                PlotGeneration.update_animation(start_frame, frame, usv_coord, plots_usv)
+                PlotGeneration.update_animation(start_frame_uav, frame, uav_coord, plots_uav)
+                PlotGeneration.update_animation(start_frame_uav, frame, opt_x, plots_uav_opt)
+
+                plot_val = []
+                plot_opt_val = []
+                plot_val += ax2.plot(val[:frame], "b")
+                plot_opt_val += ax2.plot(val_opt[:frame], "r")
+                full_plots = plots_usv + plots_uav + plot_val + plots_uav_opt + plot_opt_val
+                return full_plots
+
+            ani1 = animation.FuncAnimation(fig, update, frames=trajs_s.time.n, blit=True, interval=100)
+
+            if self.COLAB:
+                display(HTML(ani1.to_jshtml()))
+                plt.close(fig)
+                plt.savefig(os.path.join('results', 'output_figure.png'))
+            else:
+                ani1.save('animation4.mp4', writer='ffmpeg')
+                plt.show()
+
+            plt.close(fig)
+

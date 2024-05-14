@@ -1,6 +1,9 @@
 import numpy as np
 from dataclasses import dataclass, field
 import math
+
+from scipy.optimize import minimize
+
 from gym_pybullet_drones.envs.NewBaseRLAviary import NewBaseRLAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
@@ -37,11 +40,12 @@ class RlHoverAviary(NewBaseRLAviary):
                  initial_rpys=None,
                  physics: Physics = Physics.PYB,
                  pyb_freq: int = 300,
-                 ctrl_freq: int = 20,
+                 ctrl_freq: int = 60,
                  gui=False,
                  record=False,
                  obs: ObservationType = ObservationType.KIN,
                  act: ActionType = ActionType.PID,
+                 traj_uav = None
                  ):
         """Initialization of a multi-agent RL environment.
 
@@ -81,7 +85,7 @@ class RlHoverAviary(NewBaseRLAviary):
         #     [np.random.uniform(-10.0, 20.0), 10, 10],
         #     [np.random.uniform(-10.0, 20.0), 50, 10]
         # ])
-        self.EPISODE_LEN_SEC = 50
+        self.EPISODE_LEN_SEC = 20
         super().__init__(drone_model=drone_model,
                          num_drones=num_drones,
                          neighbourhood_radius=neighbourhood_radius,
@@ -96,29 +100,36 @@ class RlHoverAviary(NewBaseRLAviary):
                          act=act
 
                          )
-
-        xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
-        phi = np.array([np.random.uniform(-math.pi, math.pi),
-                        np.random.uniform(-math.pi, math.pi),
-                        np.random.uniform(-math.pi, math.pi),
-                        np.random.uniform(-math.pi, math.pi)])
-        time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
         self.NUM_USV = 4
-        self.trajs = UsvTrajectory(time_data, m=self.NUM_USV, r0=xyz1[:, 0:2], xyz0=xyz1, φ0=phi)
+        if traj_uav is not None:
+            self.trajs = traj_uav
+
+        else:
+            xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
+            phi = np.array([np.random.uniform(-math.pi, math.pi),
+                            np.random.uniform(-math.pi, math.pi),
+                            np.random.uniform(-math.pi, math.pi),
+                            np.random.uniform(-math.pi, math.pi)])
+            time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
+
+            self.trajs = UsvTrajectory(time_data, m=self.NUM_USV, r0=xyz1[:, 0:2], xyz0=xyz1, φ0=phi)
+
         self.usv_coord = self.trajs.xyz
+
+        self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
+        self.opt_x[0] = initial_xyzs
+        for i in range(1, self.usv_coord.shape[0]):
+            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
+                                                                              self.usv_coord[i, :, :].reshape(1, 4, 3))
+            optimized = minimize(loss_func, self.opt_x[i - 1].reshape(6, ))
+            self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
+
+        self.opt_x[:, :, 2] += 10
+
         if self.ACT_TYPE == ActionType.VEL or self.ACT_TYPE == ActionType.RPM:
             self.m = 40
         elif self.ACT_TYPE == ActionType.PID:
             self.m = 30
-        # self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
-        # self.opt_x[0] = initial_xyzs
-        # for i in range(1, self.usv_coord.shape[0]):
-        #     loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
-        #                                                                       self.usv_coord[i, :, :].reshape(1, 4, 3))
-        #     optimized = minimize(loss_func, self.opt_x[i - 1].reshape(6, ))
-        #     self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
-        #
-        # self.opt_x[:, :, 2] += 10
 
     ################################################################################
 
@@ -131,24 +142,22 @@ class RlHoverAviary(NewBaseRLAviary):
             The reward.
 
         """
-        H = 10
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
         val = LossFunction.communication_quality_function(uav_coord.reshape(1, 2, 3),
                                                           self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
+
+        val_opt = LossFunction.communication_quality_function(self.opt_x[self.step_counter, :, :].reshape(1, 2, 3), self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
+        f = np.abs(val_opt - val)
+        #f = val / val_opt
+
+
         if uav_coord[0, 2] >= 9 or uav_coord[1, 2] >= 9:
-            ret = (10000 / val ** 2)
+            ret =  1 / f                         #(10000 / val ** 2)
         else:
-            #ret = 0#(10000 / val ** 2) * (1 - ((uav_coord[0, 2] - H) / H) ** 2) * (1 - ((uav_coord[1, 2] - H) / H) ** 2)
-            ret = 0  #-0.01
+            ret = 0
         if uav_coord[0, 2] < 5 or uav_coord[1, 2] < 5:
             print("H меньше 5")
-        # val_opt = LossFunction.communication_quality_function(self.opt_x[self.step_counter, :, :].reshape(1, 2, 3), self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
-        # f = val / val_opt
-        # if 11 >= uav_coord[0, 2] >= 9.5 or 11 >= uav_coord[1, 2] >= 9.5:
-        #     ret = 1/f
-        # else:
-        #     ret = 0
 
         return ret
 

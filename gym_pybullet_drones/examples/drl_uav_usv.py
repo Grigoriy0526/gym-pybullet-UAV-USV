@@ -98,7 +98,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/ppo_100_2-1drag' + '/best_model.zip'
+        path0 = 'results/PPO_NEW_REWARD_100' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
@@ -118,7 +118,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=500, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=1000, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
@@ -129,38 +129,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                                  eval_freq=int(1000),
                                  deterministic=True,
                                  render=False)
-    # steps = 0
-    #
-    # while steps < 5:
-    #     filename = os.path.join(output_folder, 'save-' + datetime.now().strftime("%m.%d.%Y_%H.%M.%S"))
-    #     if not os.path.exists(filename):
-    #         os.makedirs(filename + '/')
-    #     if steps == 0:
-    #         model = PPO('MlpPolicy',
-    #                     train_env,
-    #                     # n_steps=  4096,
-    #                     # learning_rate=0.001,
-    #                     # ent_coef=0.001,
-    #                     # tensorboard_log=filename+'/tb/',
-    #                     verbose=1)
-    #     else:
-    #         directory = 'results/'
-    #          #files = os.listdir(directory)
-    #         # files.sort(key=os.path.getmtime)
-    #         subdirectories = [x for x in os.listdir(directory) if os.path.isdir(os.path.join(directory, x))]
-    #         subdirectories.sort(key=lambda x: os.path.getctime(os.path.join(directory, x)))
-    #         last_file = subdirectories[-2]
-    #         print(last_file)
-    #         path0 = 'results/' + last_file + '/best_model.zip'
-    #         model = PPO.load(path0)
-    #         model.set_env(train_env)
-    #
-    #     model.learn(total_timesteps=int(1e4) if local else int(1e2),  # shorter training in GitHub Actions pytest
-    #             callback=eval_callback,
-    #             log_interval=100)
-    #     #model.save(filename + '/final_model.zip')
-    #
-    #     steps += 1
+
     model.learn(total_timesteps=int(1e7) if local else int(1e2),  # shorter training in GitHub Actions pytest
                             callback=eval_callback,
                             log_interval=100)
@@ -231,15 +200,15 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         obs, reward, terminated, truncated, info = test_env.step(action)
         # obs2 = obs.squeeze()
         # act2 = action.squeeze()
-        print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
+        #print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
         if DEFAULT_OBS == ObservationType.KIN:
             for d in range(DEFAULT_AGENTS):
                 logger.log(drone=d,
                            timestamp=i / test_env.CTRL_FREQ,
                            state=np.hstack([obs[d][0:3],
                                             obs[d][3:16],
-                                            action[d]
-                                            #np.zeros(1)
+                                            action[d],
+                                            np.zeros(1)
                                             ]),
                            control=np.zeros(12)
                            )

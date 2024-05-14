@@ -189,7 +189,7 @@ class DSLPIDControl(BaseControl):
         vel_e = target_vel - cur_vel
         self.integral_pos_e = self.integral_pos_e + pos_e*control_timestep
         self.integral_pos_e = np.clip(self.integral_pos_e, -2., 2.)
-        self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, .15)
+        self.integral_pos_e[2] = np.clip(self.integral_pos_e[2], -0.15, 0.15)
         #### PID target thrust #####################################
         target_thrust = np.multiply(self.P_COEFF_FOR, pos_e) \
                         + np.multiply(self.I_COEFF_FOR, self.integral_pos_e) \
