@@ -148,12 +148,12 @@ class RlHoverAviary(NewBaseRLAviary):
                                                           self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
 
         val_opt = LossFunction.communication_quality_function(self.opt_x[self.step_counter, :, :].reshape(1, 2, 3), self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
-        f = np.abs(val_opt - val)
+        f = (val_opt - val) / val_opt
         #f = val / val_opt
 
 
         if uav_coord[0, 2] >= 9 or uav_coord[1, 2] >= 9:
-            ret =  1 / f                         #(10000 / val ** 2)
+            ret = f                         #(10000 / val ** 2)
         else:
             ret = 0
         if uav_coord[0, 2] < 5 or uav_coord[1, 2] < 5:

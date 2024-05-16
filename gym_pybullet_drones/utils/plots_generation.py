@@ -2,10 +2,10 @@
 class PlotGeneration:
 
     @staticmethod
-    def created_plot(plots, ax, nums, coord_vehicle, names, size):
+    def created_plot(plots, ax, nums, coord_vehicle, names, size, color=None):
 
         for i in range(nums):
-            plots += ax.plot(coord_vehicle[0, i, 0], coord_vehicle[0, i, 1], label=f'{names} {i}', linewidth=size)
+            plots += ax.plot(coord_vehicle[0, i, 0], coord_vehicle[0, i, 1], color=f'{color}', label=f'{names} {i}', linewidth=size)
 
     @staticmethod
     def update_animation(start_frame, frame, coord_vehicle, plots):

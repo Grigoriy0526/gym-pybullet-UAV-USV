@@ -38,7 +38,7 @@ from gym_pybullet_drones.utils.utils import sync, str2bool
 from scipy.optimize import minimize
 from gym_pybullet_drones.envs.VelocityAviary import VelocityAviary
 
-DEFAULT_DRONE = DroneModel("cf2p")
+DEFAULT_DRONE = DroneModel("cf2x")
 DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_PLOT = True
@@ -75,7 +75,7 @@ DEFAULT_GUI = False
 DEFAULT_RECORD_VIDEO = False
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
-DRONE_MODEL = DroneModel.CF2P
+DRONE_MODEL = DroneModel.CF2X
 DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
@@ -98,10 +98,10 @@ def run(
         ):
         #### Initialize the simulation #############################
     INIT_XYZS = np.array([
-                          [10, 10, 10],
-                          [10, 50, 10],
-                          [0, 10, 10],
-                          [0, 50, 10]
+                          [0, 55, 10],
+                          [0, 95, 10],
+                          [0, 50, 10],
+                          [0, 90, 10]
                           ])
     INIT_RPYS = np.array([
                           [0, 0, 0],
@@ -110,15 +110,15 @@ def run(
                           [0, 0, 0]
                           ])
     INIT_XYZS_0 = np.array([
-        [0, 10, 10],
-        [0, 50, 10]
+        [0, 50, 10],
+        [0, 90, 10]
     ])
     INIT_RPYS_0 = np.array([
         [0, 0, 0],
         [0, 0, 0]
     ])
 
-    xyz1 = np.array([[0, 0, 0], [0, 20, 0], [0, 40, 0], [0, 60, 0]])
+    xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
     phi = np.array([np.random.uniform(-math.pi, math.pi),
                     np.random.uniform(-math.pi, math.pi),
                     np.random.uniform(-math.pi, math.pi),
@@ -152,7 +152,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/PPO_NEW_REWARD_300_2'
+    filename = 'results/OPT_50_20HZ_5'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 
@@ -163,7 +163,6 @@ def run(
 
     #### Initialize the velocity target ############
     TARGET_VEL = np.zeros((num_drone, NUM_WP, 4))
-
     #### Initialize the logger #################################0
     logger = Logger(logging_freq_hz=control_freq_hz,
                     num_drones=num_drone,
@@ -188,17 +187,23 @@ def run(
         optimized = minimize(function, opt_x[i - 1].reshape(6, ))
         opt_x[i] = optimized.x.reshape(2, 3)
         d_err = opt_x[i] - np.transpose(np.array([obs[0:2, 0], obs[0:2, 1], obs[0:2, 2]]), (1, 0))
+        if np.linalg.norm(d_err[:3]) != 0:
+            v_unit_vector = d_err[:3] / np.linalg.norm(d_err[:3])
+        else:
+            v_unit_vector = np.zeros(3)
         for j in range(2):
-            TARGET_VEL[j, i, :] = np.array([d_err[j, 0], d_err[j, 1], 0, 5])
+            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], 0, 3])
         action[0:2, :] = TARGET_VEL[0:2, i, :]
 
 
 
 
         obs_rl, _, _, _, _ = ppo_env.step(action[2:, :])
-        TARGET_VEL[2:, i, :], _states = model.predict(obs_rl,
+        act, _states = model.predict(obs_rl,
                                             deterministic=True
                                             )
+        for k in range(2, 4):
+            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], 0, 3*act[k-2, 3]])
         action[2:, :] = TARGET_VEL[2:, i, :]
 
 
@@ -228,7 +233,7 @@ def run(
     #logger.save_as_csv("vel") # Optional CSV save
     if plot:
         logger.plot()
-        logger.plot_trajct_compare(trajs=trajs)
+        logger.plot_trajct_compare(trajs=trajs, freq=DEFAULT_CONTROL_FREQ_HZ)
 
 if __name__ == "__main__":
     #### Define and parse (optional) arguments for the script ##

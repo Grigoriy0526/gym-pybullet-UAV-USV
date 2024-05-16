@@ -47,7 +47,7 @@ DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_PHYSICS = Physics.PYB
-MOD = 'new'
+MOD = 'old'
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
@@ -98,7 +98,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/PPO_NEW_REWARD_100' + '/best_model.zip'
+        path0 = 'results/OPT_100_20HZ_4' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
@@ -108,7 +108,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                     #n_steps= 1000,     #2048
                     #batch_size=8000, #64
                     #gamma=0.6, #0.99
-                    #learning_rate=0.0001, #0.0003
+                    #learning_rate=0.0005, #0.0003
                     ent_coef=0.05, #0.0
                     #vf_coef=
                     #tensorboard_log=filename+'/tb/',
@@ -118,7 +118,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=1000, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=30, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,

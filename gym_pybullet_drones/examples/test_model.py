@@ -82,68 +82,22 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         [0, 0, 0],
         [0, 0, 0]
     ])
-    filename = 'results/PPO_NEW_REWARD_100'
+    filename = 'results/save-05.16.2024_13.27.27'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
     df = np.load(filename + '/evaluations.npz')
-    # plt.plot(df['timesteps'], df['results'])
+
     #### Show (and record a video of) the model's performance ##
 
-    test_env = RlHoverAviary(gui=gui,
-                             num_drones=DEFAULT_AGENTS,
-                             initial_xyzs=INIT_XYZS,
-                             initial_rpys=INIT_RPYS,
-                             drone_model=DRONE_MODEL,
-                             obs=DEFAULT_OBS,
-                             act=DEFAULT_ACT,
-                             record=record_video)
     test_env_nogui = RlHoverAviary(num_drones=DEFAULT_AGENTS, initial_xyzs=INIT_XYZS,
                                    initial_rpys=INIT_RPYS, drone_model=DRONE_MODEL, obs=DEFAULT_OBS, act=DEFAULT_ACT)
 
-    logger = Logger(logging_freq_hz=int(test_env.CTRL_FREQ),
-                    num_drones=DEFAULT_AGENTS,
-                    output_folder=output_folder,
-                    colab=colab
-                    )
 
     mean_reward, std_reward = evaluate_policy(model,
                                               test_env_nogui,
-                                              n_eval_episodes=50
+                                              n_eval_episodes=100
                                               )
     print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
-
-    obs, info = test_env.reset(seed=42, options={})
-    start = time.time()
-    for i in range((test_env.EPISODE_LEN_SEC) * test_env.CTRL_FREQ):
-        action, _states = model.predict(obs,
-                                        deterministic=True
-                                        )
-        obs, reward, terminated, truncated, info = test_env.step(action)
-        # obs2 = obs.squeeze()
-        # act2 = action.squeeze()
-        # print("Obs:", obs, "\tAction", action, "\tReward:", reward, "\tTerminated:", terminated, "\tTruncated:", truncated)
-        if DEFAULT_OBS == ObservationType.KIN:
-            for d in range(DEFAULT_AGENTS):
-                logger.log(drone=d,
-                           timestamp=i / test_env.CTRL_FREQ,
-                           state=np.hstack([obs[d][0:3],
-                                            obs[d][3:16],
-                                            action[d]
-                                            ]),
-                           control=np.zeros(12)
-                           )
-
-        test_env.render()
-        # print(terminated)
-        if gui:
-            sync(i, start, test_env.CTRL_TIMESTEP)
-        # if terminated:
-        # obs = test_env.reset(seed=42, options={})
-    test_env.close()
-
-    if plot and DEFAULT_OBS == ObservationType.KIN:
-        logger.plot()
-        logger.plot_trajct(trajs=test_env.trajs, df=df)
 
 
 

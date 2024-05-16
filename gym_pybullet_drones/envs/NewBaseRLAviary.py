@@ -224,7 +224,7 @@ class NewBaseRLAviary(BaseAviary):
                                                              cur_ang_vel=state[13:16],
                                                              target_pos=np.array([state[0], state[1], 10]), # same as the current position
                                                              target_rpy=state[7:10],
-                                                             target_vel= v * self.SPEED_LIMIT * np.abs(target[3])
+                                                             target_vel= v  * self.SPEED_LIMIT * np.abs(target[3])
                                                              # target the desired velocity vector
                                                              )
                 elif self.DRONE_MODEL == DroneModel.RACE:
