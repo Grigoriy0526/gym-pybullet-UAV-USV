@@ -47,7 +47,7 @@ DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_PHYSICS = Physics.PYB
-MOD = 'old'
+MOD = 'new'
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
@@ -63,8 +63,8 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         os.makedirs(filename + '/')
 
     INIT_XYZS = np.array([
-        [0, 50, 10],
-        [0, 90, 10]
+        [0, 50, 15],
+        [0, 90, 15]
     ])
     INIT_RPYS = np.array([
         [0, 0, 0],
@@ -109,7 +109,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                     #batch_size=8000, #64
                     #gamma=0.6, #0.99
                     #learning_rate=0.0005, #0.0003
-                    ent_coef=0.05, #0.0
+                    ent_coef=0.05, #.0.0
                     #vf_coef=
                     #tensorboard_log=filename+'/tb/',
                     verbose=1)
@@ -118,12 +118,12 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=30, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=150, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
-                                 n_eval_episodes=5,
+                                 n_eval_episodes=3,
                                  best_model_save_path=filename + '/',
                                  log_path=filename + '/',
                                  eval_freq=int(1000),

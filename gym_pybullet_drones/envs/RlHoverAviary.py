@@ -7,6 +7,7 @@ from scipy.optimize import minimize
 from gym_pybullet_drones.envs.NewBaseRLAviary import NewBaseRLAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
+from gym_pybullet_drones.examples.loss_function import LossFunction0
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ActionType, ObservationType
 
 
@@ -45,7 +46,7 @@ class RlHoverAviary(NewBaseRLAviary):
                  record=False,
                  obs: ObservationType = ObservationType.KIN,
                  act: ActionType = ActionType.PID,
-                 traj_uav = None
+                 traj_uav=None
                  ):
         """Initialization of a multi-agent RL environment.
 
@@ -79,7 +80,6 @@ class RlHoverAviary(NewBaseRLAviary):
             The type of action space (1 or 3D; RPMS, thurst and torques, or waypoint with PID control)
 
         """
-
 
         # INIT_XYZS = np.array([
         #     [np.random.uniform(-10.0, 20.0), 10, 10],
@@ -119,12 +119,12 @@ class RlHoverAviary(NewBaseRLAviary):
         self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
         self.opt_x[0] = initial_xyzs
         for i in range(1, self.usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
-                                                                              self.usv_coord[i, :, :].reshape(1, 4, 3))
+            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(self.NUM_DRONES, 3),
+                                                                               self.usv_coord[i, :, :])
             optimized = minimize(loss_func, self.opt_x[i - 1].reshape(6, ))
             self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
-        self.opt_x[:, :, 2] += 10
+        #self.opt_x[:, :, 2] += 10
 
         if self.ACT_TYPE == ActionType.VEL or self.ACT_TYPE == ActionType.RPM:
             self.m = 40
@@ -144,18 +144,17 @@ class RlHoverAviary(NewBaseRLAviary):
         """
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
-        val = LossFunction.communication_quality_function(uav_coord.reshape(1, 2, 3),
-                                                          self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
+        val = LossFunction.communication_quality_function(uav_coord,
+                                                          self.usv_coord[self.step_counter, :, :])
 
-        val_opt = LossFunction.communication_quality_function(self.opt_x[self.step_counter, :, :].reshape(1, 2, 3), self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
+        val_opt = LossFunction.communication_quality_function(self.opt_x[self.step_counter, :, :], self.usv_coord[self.step_counter, :, :])
         f = (val_opt - val) / val_opt
         #f = val / val_opt
 
-
-        if uav_coord[0, 2] >= 9 or uav_coord[1, 2] >= 9:
-            ret = f                         #(10000 / val ** 2)
-        else:
-            ret = 0
+        #if uav_coord[0, 2] >= 9 or uav_coord[1, 2] >= 9:
+        ret = f  #(10000 / val ** 2)
+        #else:
+        #    ret = 0
         if uav_coord[0, 2] < 5 or uav_coord[1, 2] < 5:
             print("H меньше 5")
 
@@ -166,13 +165,10 @@ class RlHoverAviary(NewBaseRLAviary):
     def step(self, action):
 
         observation, reward, terminated, truncated, info = super().step(action)
-        obs_usv = np.zeros((self.NUM_USV, 12))
+        obs_usv = np.zeros((self.NUM_USV, 6))
         for i in range(self.NUM_USV):
             obs_usv[i, :] = np.hstack([self.usv_coord[self.step_counter - 1, i, :],
-                                       np.zeros(2),
-                                       self.trajs.φ[self.step_counter - 1, i],
-                                       np.append(self.trajs.v[self.step_counter - 1, i, :], [0]),
-                                       self.trajs.ω_vect[self.step_counter - 1, i, :]]).reshape(12, )
+                                       np.append(self.trajs.v[self.step_counter - 1, i, :], [0])]).reshape(6, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
         pad_width = ((0, 0), (0, self.m))
@@ -184,13 +180,10 @@ class RlHoverAviary(NewBaseRLAviary):
 
         initial_obs, initial_info = super().reset(seed=42, options={})
 
-        obs_usv = np.zeros((self.NUM_USV, 12))
+        obs_usv = np.zeros((self.NUM_USV, 6))
         for i in range(self.NUM_USV):
             obs_usv[i, :] = np.hstack([self.usv_coord[0, i, :],
-                                       np.zeros(2),
-                                       self.trajs.φ[0, i],
-                                       np.append(self.trajs.v[0, i, :], [0]),
-                                       self.trajs.ω_vect[0, i, :]]).reshape(12, )
+                                       np.append(self.trajs.v[0, i, :], [0])]).reshape(6, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
         pad_width = ((0, 0), (0, self.m))

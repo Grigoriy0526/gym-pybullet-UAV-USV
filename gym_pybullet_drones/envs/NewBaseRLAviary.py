@@ -216,15 +216,15 @@ class NewBaseRLAviary(BaseAviary):
                         v_unit_vector = target[:3] / np.linalg.norm(target[:3])
                     else:
                         v_unit_vector = np.zeros(3)
-                    v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, v_unit_vector[2]])
+                    v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, v_unit_vector[2]*koef])
                     temp, _, _ = self.ctrl[k].computeControl(control_timestep=self.CTRL_TIMESTEP,
                                                              cur_pos=state[0:3],
                                                              cur_quat=state[3:7],
                                                              cur_vel=state[10:13],
                                                              cur_ang_vel=state[13:16],
-                                                             target_pos=np.array([state[0], state[1], 10]), # same as the current position
+                                                             target_pos=np.array([state[0], state[1], state[2]]), # same as the current position
                                                              target_rpy=state[7:10],
-                                                             target_vel= v  * self.SPEED_LIMIT * np.abs(target[3])
+                                                             target_vel=v * self.SPEED_LIMIT * np.abs(target[3])
                                                              # target the desired velocity vector
                                                              )
                 elif self.DRONE_MODEL == DroneModel.RACE:
@@ -233,12 +233,12 @@ class NewBaseRLAviary(BaseAviary):
                     if np.linalg.norm(target[0:3]) != 0:
                         v_unit_vector = target[0:3] / np.linalg.norm(target[0:3])
                     else:
-                        v_unit_vector = np.zeros(2)
+                        v_unit_vector = np.zeros(3)
                     v = np.array([v_unit_vector[0] * koef, v_unit_vector[1] * koef, v_unit_vector[2]])
 
                     temp = self.ctrl[k].computeControlFromState(control_timestep=self.CTRL_TIMESTEP,
                                                                 state=state,
-                                                                target_pos=np.array([state[0], state[1], 40]),
+                                                                target_pos=np.array([state[0], state[1], state[2]]),
                                                                 target_vel=np.abs(target[3]) * v * self.SPEED_LIMIT
                                                                 )
                 rpm[k, :] = temp
@@ -283,9 +283,9 @@ class NewBaseRLAviary(BaseAviary):
             hi = np.inf
             nums = self.NUM_DRONES + 4
             obs_lower_bound = np.array(
-                [[lo, lo, 0, lo, lo, lo, lo, lo, lo, lo, lo, lo] for i in range(nums)])
+                [[lo, lo, 0, lo, lo, lo] for i in range(nums)])
             obs_upper_bound = np.array(
-                [[hi, hi, hi, hi, hi, hi, hi, hi, hi, hi, hi, hi] for i in range(nums)])
+                [[hi, hi, hi, hi, hi, hi] for i in range(nums)])
             #### Add action buffer to observation space ################
             act_lo = -1
             act_hi = +1
@@ -336,11 +336,11 @@ class NewBaseRLAviary(BaseAviary):
         elif self.OBS_TYPE == ObservationType.KIN:
             ############################################################
             #### OBS SPACE OF SIZE 12
-            obs_12 = np.zeros((self.NUM_DRONES, 12))
+            obs_12 = np.zeros((self.NUM_DRONES, 6))
             for i in range(self.NUM_DRONES):
                 # obs = self._clipAndNormalizeState(self._getDroneStateVector(i))
                 obs = self._getDroneStateVector(i)
-                obs_12[i, :] = np.hstack([obs[0:3], obs[7:10], obs[10:13], obs[13:16]]).reshape(12, )
+                obs_12[i, :] = np.hstack([obs[0:3], obs[10:13]]).reshape(6, )
             ret = np.array([obs_12[i, :] for i in range(self.NUM_DRONES)]).astype('float32')
             #### Add action buffer to observation #######################
             for i in range(self.ACTION_BUFFER_SIZE):
