@@ -97,7 +97,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     #### Train the model #######################################
     # создаем модель с PPO
-    if mod == "old":
+    if mod == "new":
         path0 = 'results/save-06.06.2024_13.55.32' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
@@ -109,7 +109,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                     #batch_size=8000, #64
                     #gamma=0.6, #0.99
                     #learning_rate=0.0005, #0.0003
-                    ent_coef=0.05, #.0.0
+                    #ent_coef=0.05, #.0.0
                     #vf_coef=
                     #tensorboard_log=filename+'/tb/',
                     verbose=1)
@@ -118,7 +118,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=20, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=100, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
