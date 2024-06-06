@@ -85,6 +85,8 @@ class RlHoverAviary(NewBaseRLAviary):
         #     [np.random.uniform(-10.0, 20.0), 10, 10],
         #     [np.random.uniform(-10.0, 20.0), 50, 10]
         # ])
+        self.trajs = None
+        self.usv_coord = None
         self.EPISODE_LEN_SEC = 20
         super().__init__(drone_model=drone_model,
                          num_drones=num_drones,
@@ -101,33 +103,21 @@ class RlHoverAviary(NewBaseRLAviary):
 
                          )
         self.NUM_USV = 4
-        if traj_uav is not None:
-            self.trajs = traj_uav
 
-        else:
-            xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
-            phi = np.array([np.random.uniform(-math.pi, math.pi),
-                            np.random.uniform(-math.pi, math.pi),
-                            np.random.uniform(-math.pi, math.pi),
-                            np.random.uniform(-math.pi, math.pi)])
-            time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
-
-            self.trajs = UsvTrajectory(time_data, m=self.NUM_USV, r0=xyz1[:, 0:2], xyz0=xyz1, φ0=phi)
-
-        self.usv_coord = self.trajs.xyz
-
-        self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
-        self.opt_x[0] = initial_xyzs
-        for i in range(1, self.usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(self.NUM_DRONES, 3),
-                                                                               self.usv_coord[i, :, :])
-            optimized = minimize(loss_func, self.opt_x[i - 1].reshape(6, ))
-            self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
+        # if not gui:
+        #     self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
+        #     self.opt_x[0] = initial_xyzs
+        #     for i in range(1, self.usv_coord.shape[0]):
+        #         loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
+        #                                                                                     self.usv_coord[i, :, :].reshape(1,4,3))
+        #         optimized = minimize(loss_func, self.opt_x[i - 1].reshape(6, ))
+        #         self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
         #self.opt_x[:, :, 2] += 10
-
+        self.xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
+        self.time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
         if self.ACT_TYPE == ActionType.VEL or self.ACT_TYPE == ActionType.RPM:
-            self.m = 40
+            self.m = 120
         elif self.ACT_TYPE == ActionType.PID:
             self.m = 30
 
@@ -144,19 +134,20 @@ class RlHoverAviary(NewBaseRLAviary):
         """
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
-        val = LossFunction.communication_quality_function(uav_coord,
-                                                          self.usv_coord[self.step_counter, :, :])
+        val = LossFunction.communication_quality_function(uav_coord, self.usv_coord[self.step_counter, :, :])
 
-        val_opt = LossFunction.communication_quality_function(self.opt_x[self.step_counter, :, :], self.usv_coord[self.step_counter, :, :])
-        f = (val_opt - val) / val_opt
-        #f = val / val_opt
+        loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
+                                                                           self.usv_coord[self.step_counter, :,
+                                                                           :].reshape(1, 4, 3))
+        optimized = minimize(loss_func, uav_coord.reshape(6, ))
+        opt_x = optimized.x.reshape(self.NUM_DRONES, 3)
+        opt_x[:, 2] += 10
+        val_opt = LossFunction0.communication_quality_function(opt_x.reshape(1, self.NUM_DRONES, 3),
+                                                              self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
 
-        #if uav_coord[0, 2] >= 9 or uav_coord[1, 2] >= 9:
-        ret = f  #(10000 / val ** 2)
-        #else:
-        #    ret = 0
-        if uav_coord[0, 2] < 5 or uav_coord[1, 2] < 5:
-            print("H меньше 5")
+        ret = (val_opt - val) / val_opt
+        # if uav_coord[0, 2] < 1 or uav_coord[1, 2] < 1:
+        #     print("H меньше 1")
 
         return ret
 
@@ -182,13 +173,16 @@ class RlHoverAviary(NewBaseRLAviary):
 
         obs_usv = np.zeros((self.NUM_USV, 6))
         for i in range(self.NUM_USV):
-            obs_usv[i, :] = np.hstack([self.usv_coord[0, i, :],
-                                       np.append(self.trajs.v[0, i, :], [0])]).reshape(6, )
+            obs_usv[i, :] = np.hstack([self.xyz1[i, :],
+                                       np.append(np.zeros(2), [0])]).reshape(6, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
         pad_width = ((0, 0), (0, self.m))
         padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         initial_obs = np.concatenate((initial_obs, padded_array), axis=0)
+        phi = np.random.uniform(-math.pi, math.pi, 4)
+        self.trajs = UsvTrajectory(self.time_data, m=self.NUM_USV, r0=self.xyz1[:, 0:2], xyz0=self.xyz1, φ0=phi)
+        self.usv_coord = self.trajs.xyz
         return initial_obs, initial_info
 
     def _computeTerminated(self):

@@ -47,7 +47,7 @@ DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_PHYSICS = Physics.PYB
-MOD = 'new'
+MOD = 'old'
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
@@ -63,8 +63,8 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         os.makedirs(filename + '/')
 
     INIT_XYZS = np.array([
-        [0, 50, 15],
-        [0, 90, 15]
+        [0, 50, 10],
+        [0, 90, 10]
     ])
     INIT_RPYS = np.array([
         [0, 0, 0],
@@ -98,7 +98,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/OPT_100_20HZ_4' + '/best_model.zip'
+        path0 = 'results/save-06.06.2024_13.55.32' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
@@ -118,7 +118,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=150, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=20, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
@@ -174,22 +174,22 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                              obs=DEFAULT_OBS,
                              act=DEFAULT_ACT,
                              record=record_video)
-    test_env_nogui = RlHoverAviary(num_drones=DEFAULT_AGENTS, initial_xyzs=INIT_XYZS,
-                                   drone_model=DRONE_MODEL,
-                                   physics=DEFAULT_PHYSICS,
-                                   initial_rpys=INIT_RPYS, obs=DEFAULT_OBS, act=DEFAULT_ACT)
-
+    # test_env_nogui = RlHoverAviary(num_drones=DEFAULT_AGENTS, initial_xyzs=INIT_XYZS,
+    #                                drone_model=DRONE_MODEL,
+    #                                physics=DEFAULT_PHYSICS,
+    #                                initial_rpys=INIT_RPYS, obs=DEFAULT_OBS, act=DEFAULT_ACT)
+    #
     logger = Logger(logging_freq_hz=int(test_env.CTRL_FREQ),
                     num_drones=DEFAULT_AGENTS,
                     output_folder=output_folder,
                     colab=colab
                     )
-
-    mean_reward, std_reward = evaluate_policy(model,
-                                              test_env_nogui,
-                                              n_eval_episodes=30
-                                              )
-    print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
+    #
+    # mean_reward, std_reward = evaluate_policy(model,
+    #                                           test_env_nogui,
+    #                                           n_eval_episodes=30
+    #                                           )
+    # print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
 
     obs, info = test_env.reset(seed=42, options={})
     start = time.time()

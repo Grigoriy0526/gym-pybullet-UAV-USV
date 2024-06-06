@@ -46,7 +46,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = False
 DEFAULT_SIMULATION_FREQ_HZ = 300
 DEFAULT_CONTROL_FREQ_HZ = 60
-DEFAULT_DURATION_SEC = 20
+DEFAULT_DURATION_SEC = 5
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 NUM_DRONE = 4
@@ -152,7 +152,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/OPT_50_20HZ_5'
+    filename = 'results/save-06.04.2024_17.53.02'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 
@@ -182,8 +182,8 @@ def run(
 
         #### Step the simulation ###################################
         obs, reward, terminated, truncated, info = env.step(action)
-        function = lambda x: LossFunction.communication_quality_function(x.reshape(1, 2, 3),
-                                                                         usv_coord[i, :, :].reshape(1, 4, 3))
+        function = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3),
+                                                                         usv_coord[i, :, :])
         optimized = minimize(function, opt_x[i - 1].reshape(6, ))
         opt_x[i] = optimized.x.reshape(2, 3)
         d_err = opt_x[i] - np.transpose(np.array([obs[0:2, 0], obs[0:2, 1], obs[0:2, 2]]), (1, 0))
@@ -192,7 +192,7 @@ def run(
         else:
             v_unit_vector = np.zeros(3)
         for j in range(2):
-            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], 0, 3])
+            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], 0, 5])
         action[0:2, :] = TARGET_VEL[0:2, i, :]
 
 
@@ -203,7 +203,7 @@ def run(
                                             deterministic=True
                                             )
         for k in range(2, 4):
-            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], 0, 3*act[k-2, 3]])
+            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], act[k-2, 2], 3*act[k-2, 3]])
         action[2:, :] = TARGET_VEL[2:, i, :]
 
 

@@ -203,7 +203,7 @@ class DSLPIDControl(BaseControl):
         target_rotation = (np.vstack([target_x_ax, target_y_ax, target_z_ax])).transpose()
         #### Target rotation #######################################
         target_euler = (Rotation.from_matrix(target_rotation)).as_euler('XYZ', degrees=False)
-        target_euler[0:2] = np.clip(target_euler[0:2], -0.30, 0.30)
+        target_euler[0:2] = np.clip(target_euler[0:2], -0.25, 0.25)
         if np.any(np.abs(target_euler) > math.pi):
             print("\n[ERROR] ctrl it", self.control_counter, "in Control._dslPIDPositionControl(), values outside range [-pi,pi]")
         return thrust, target_euler, pos_e

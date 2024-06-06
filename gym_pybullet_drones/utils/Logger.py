@@ -441,22 +441,29 @@ class Logger(object):
         uav_coord = uav_c[::step]
         uav_coord_c = uav_coord.copy()
         usv_coord = trajs_s.xyz
-        val_gd = LossFunction.communication_quality_function(uav_coord[:, 0:2, :], usv_coord)
-        val_rl = LossFunction.communication_quality_function(uav_coord[:, 2:, :], usv_coord)
+        #val_gd = LossFunction.communication_quality_function(uav_coord[:, 0:2, :], usv_coord)
+        #val_rl = LossFunction.communication_quality_function(uav_coord[:, 2:, :], usv_coord)
+
+        opt_x = np.zeros((usv_coord.shape[0], 2, 3))
+        opt_x[0] = uav_coord_c[0, 2:, :]
+        for i in range(1, usv_coord.shape[0]):
+            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3),
+                                                                              usv_coord[i, :, :])
+            optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
+            opt_x[i] += optimized.x.reshape(2, 3)
+
+        #opt_x[:, :, 2] += 10
+        val_gd = np.zeros(usv_coord.shape[0])
+        val_opt = np.zeros(usv_coord.shape[0])
+        val_rl= np.zeros(usv_coord.shape[0])
+        for i in range(usv_coord.shape[0]):
+            val_opt[i] = LossFunction.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
+            val_rl[i] = LossFunction.communication_quality_function(uav_coord[i, 2:, :], usv_coord[i, :, :])
+            val_gd[i] = LossFunction.communication_quality_function(uav_coord[i, 0:2, :], usv_coord[i, :, :])
         reward_gd = np.sum(10000 / val_gd ** 2)
         print("Reward GD:", reward_gd)
         reward_rl = np.sum(10000 / val_rl ** 2)
         print("Reward RL:", reward_rl)
-        opt_x = np.zeros((usv_coord.shape[0], 2, 3))
-        opt_x[0] = uav_coord_c[0, 2:, :]
-        for i in range(1, usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(1, 2, 3),
-                                                                              usv_coord[i, :, :].reshape(1, 4, 3))
-            optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
-            opt_x[i] += optimized.x.reshape(2, 3)
-
-        opt_x[:, :, 2] += 10
-        val_opt = LossFunction.communication_quality_function(opt_x, usv_coord)
         reward_opt = np.sum(10000 / val_opt ** 2)
         print("Reward opt alroitm:", reward_opt)
         new_reward_gd = np.sum((val_opt - val_gd) / val_opt)
@@ -477,9 +484,9 @@ class Logger(object):
         plots_uav_gd = []
         plots_uav_rl = []
         plots_uav_opt = []
-        PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "БПНА", 7.0, "b")
-        PlotGeneration.created_plot(plots_uav_gd, ax, 2, uav_coord[:, 0:2, :], "БПЛА жадный", 7.0, 'r')
-        PlotGeneration.created_plot(plots_uav_rl, ax, 2, uav_coord[:, 2:, :], "БПЛА RL", 7.0, 'g')
+        PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "БПНА", 7.0)
+        PlotGeneration.created_plot(plots_uav_gd, ax, 2, uav_coord[:, 0:2, :], "БПЛА жадный", 7.0)
+        PlotGeneration.created_plot(plots_uav_rl, ax, 2, uav_coord[:, 2:, :], "БПЛА RL", 7.0)
         #PlotGeneration.created_plot(plots_uav_opt, ax, 2, opt_x, "UAV_OPT", 3.0, )
         self.plot_val_gd = []
         self.plot_val_rl = []

@@ -45,26 +45,6 @@ class LossFunction:
 
         ind = np.indices((6, 6)).reshape(2, -1).T
         y = [[i[0], i[1], matrix[tuple(i)]] for i in ind if matrix[tuple(i)] < np.inf]
-
-        # graph = [(0, 4, norm_usv_uav[0, 0, 0]),
-        #          (0, 5, norm_usv_uav[0, 1, 0]),
-        #          (1, 4, norm_usv_uav[0, 0, 1]),
-        #          (1, 5, norm_usv_uav[0, 1, 1]),
-        #          (2, 4, norm_usv_uav[0, 0, 2]),
-        #          (2, 5, norm_usv_uav[0, 1, 2]),
-        #          (3, 4, norm_usv_uav[0, 0, 3]),
-        #          (3, 5, norm_usv_uav[0, 1, 3]),
-        #          (4, 5, norm_uav[0, 0, 1]),
-        #          (4, 0, norm_usv_uav[0, 0, 0]),
-        #          (4, 1, norm_usv_uav[0, 0, 1]),
-        #          (4, 2, norm_usv_uav[0, 0, 2]),
-        #          (4, 3, norm_usv_uav[0, 0, 3]),
-        #          (5, 0, norm_usv_uav[0, 1, 0]),
-        #          (5, 1, norm_usv_uav[0, 1, 1]),
-        #          (5, 2, norm_usv_uav[0, 1, 2]),
-        #          (5, 3, norm_usv_uav[0, 1, 3])
-        #         ]
-
         S = np.zeros(4)
 
         for i in range(4):
