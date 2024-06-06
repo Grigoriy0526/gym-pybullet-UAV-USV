@@ -114,13 +114,13 @@ class UsvTrajectory:
                 self.ε[i, j] = np.linalg.norm(moment_force) * np.sign(moment_force[2]) / MOMENT_INERTIA + 2 * ε_diss
                 self.ω[i, j] = self.ω[i - 1, j] + self.ε[i, j] * self.time.dt
 
-                orient = self.φ[i - 1, j] + self.ω[i, j] * self.time.dt
-                if math.pi < orient:
-                    self.φ[i, j] = orient - 2 * math.pi
-                elif orient < -math.pi:
-                    self.φ[i, j] = orient + 2 * math.pi
-                else:
-                    self.φ[i, j] = orient
+                self.φ[i, j] = self.φ[i - 1, j] + self.ω[i, j] * self.time.dt
+                if math.pi < self.φ[i, j]:
+                    self.φ[i, j] = self.φ[i, j] - 2 * math.pi
+                elif self.φ[i, j] < -math.pi:
+                    self.φ[i, j] = self.φ[i, j] + 2 * math.pi
+                # else:
+                #     self.φ[i, j] = self.φ[i, j]
                 direction_a_diss = math.atan2(a_diss[1], a_diss[0])
                 deltafi = abs(direction_a_diss - self.φ[i - 1, j])
                 self.a[i, j] = traction / MASS + a_diss * deltafi
