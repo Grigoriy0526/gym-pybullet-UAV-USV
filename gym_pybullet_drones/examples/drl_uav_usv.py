@@ -47,7 +47,7 @@ DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_PHYSICS = Physics.PYB
-MOD = 'old'
+MOD = 'new'
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
@@ -63,8 +63,8 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
         os.makedirs(filename + '/')
 
     INIT_XYZS = np.array([
-        [0, 50, 10],
-        [0, 90, 10]
+        [0, 45, 10],
+        [0, 65, 10]
     ])
     INIT_RPYS = np.array([
         [0, 0, 0],
@@ -97,7 +97,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     #### Train the model #######################################
     # создаем модель с PPO
-    if mod == "new":
+    if mod == "old":
         path0 = 'results/save-06.06.2024_13.55.32' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
@@ -123,7 +123,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
-                                 n_eval_episodes=3,
+                                 n_eval_episodes=1,
                                  best_model_save_path=filename + '/',
                                  log_path=filename + '/',
                                  eval_freq=int(1000),

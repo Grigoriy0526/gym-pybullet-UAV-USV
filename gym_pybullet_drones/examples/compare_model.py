@@ -46,7 +46,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = False
 DEFAULT_SIMULATION_FREQ_HZ = 300
 DEFAULT_CONTROL_FREQ_HZ = 60
-DEFAULT_DURATION_SEC = 5
+DEFAULT_DURATION_SEC = 10
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 NUM_DRONE = 4
@@ -152,7 +152,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/save-06.04.2024_17.53.02'
+    filename = 'results/save-06.07.2024_13.56.54'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 
@@ -203,7 +203,7 @@ def run(
                                             deterministic=True
                                             )
         for k in range(2, 4):
-            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], act[k-2, 2], 3*act[k-2, 3]])
+            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], act[k-2, 2], 5*act[k-2, 3]])
         action[2:, :] = TARGET_VEL[2:, i, :]
 
 

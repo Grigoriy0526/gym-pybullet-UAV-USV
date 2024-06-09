@@ -1,15 +1,18 @@
 import numpy as np
 from dataclasses import dataclass, field
 import math
+from scipy.optimize import rosen, differential_evolution, dual_annealing
 
 from scipy.optimize import minimize
-
+from scipy.optimize import basinhopping
+from scipy.optimize import fmin_l_bfgs_b
 from gym_pybullet_drones.envs.NewBaseRLAviary import NewBaseRLAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
 from gym_pybullet_drones.examples.loss_function import LossFunction0
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ActionType, ObservationType
-
+from mystic.solvers import diffev2, fmin_powell
+from mystic.math import almostEqual
 
 @dataclass(frozen=True)
 class TimeData:
@@ -86,8 +89,8 @@ class RlHoverAviary(NewBaseRLAviary):
         #     [np.random.uniform(-10.0, 20.0), 50, 10]
         # ])
         self.trajs = None
-        self.usv_coord = None
-        self.EPISODE_LEN_SEC = 20
+        #self.usv_coord = None
+        self.EPISODE_LEN_SEC = 15
         super().__init__(drone_model=drone_model,
                          num_drones=num_drones,
                          neighbourhood_radius=neighbourhood_radius,
@@ -103,7 +106,9 @@ class RlHoverAviary(NewBaseRLAviary):
 
                          )
         self.NUM_USV = 4
-
+        if traj_uav is not None:
+            self.trajs = traj_uav
+            self.usv_coord = self.trajs.xyz
         # if not gui:
         #     self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
         #     self.opt_x[0] = initial_xyzs
@@ -114,8 +119,9 @@ class RlHoverAviary(NewBaseRLAviary):
         #         self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
         #self.opt_x[:, :, 2] += 10
-        self.xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
+        self.xyz1 = np.array([[0, 40, 0], [0, 50, 0], [0, 60, 0], [0, 70, 0]])
         self.time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
+        #print(self.usv_coord)
         if self.ACT_TYPE == ActionType.VEL or self.ACT_TYPE == ActionType.RPM:
             self.m = 120
         elif self.ACT_TYPE == ActionType.PID:
@@ -131,24 +137,25 @@ class RlHoverAviary(NewBaseRLAviary):
         float
             The reward.
 
-        """
+        # """
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
         val = LossFunction.communication_quality_function(uav_coord, self.usv_coord[self.step_counter, :, :])
 
-        loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
-                                                                           self.usv_coord[self.step_counter, :,
-                                                                           :].reshape(1, 4, 3))
+        loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(self.NUM_DRONES, 3),
+                                                                            self.usv_coord[self.step_counter, :, :])
         optimized = minimize(loss_func, uav_coord.reshape(6, ))
+        #optimized =  diffev2(loss_func, x0=bounds)                 #  dual_annealing(loss_func, bounds=bounds)
+        #optimized = basinhopping(loss_func, uav_coord.reshape(6, ), minimizer_kwargs={"method": "SLSQP"})
         opt_x = optimized.x.reshape(self.NUM_DRONES, 3)
-        opt_x[:, 2] += 10
-        val_opt = LossFunction0.communication_quality_function(opt_x.reshape(1, self.NUM_DRONES, 3),
-                                                              self.usv_coord[self.step_counter, :, :].reshape(1, 4, 3))
+        val_opt = LossFunction.communication_quality_function(opt_x,
+                                                              self.usv_coord[self.step_counter, :, :])
 
         ret = (val_opt - val) / val_opt
-        # if uav_coord[0, 2] < 1 or uav_coord[1, 2] < 1:
-        #     print("H меньше 1")
-
+        #ret = 10000 / (val**2)
+        if uav_coord[0, 2] < 1 or uav_coord[1, 2] < 1:
+            print("H меньше 1")
+        #ret=0
         return ret
 
     ################################################################################
@@ -158,8 +165,8 @@ class RlHoverAviary(NewBaseRLAviary):
         observation, reward, terminated, truncated, info = super().step(action)
         obs_usv = np.zeros((self.NUM_USV, 6))
         for i in range(self.NUM_USV):
-            obs_usv[i, :] = np.hstack([self.usv_coord[self.step_counter - 1, i, :],
-                                       np.append(self.trajs.v[self.step_counter - 1, i, :], [0])]).reshape(6, )
+            obs_usv[i, :] = np.hstack([self.usv_coord[self.step_counter-1, i, :],
+                                       np.append(self.trajs.v[self.step_counter-1, i, :], [0])]).reshape(6, )
 
         ret = np.array([obs_usv[i, :] for i in range(self.NUM_USV)]).astype('float32')
         pad_width = ((0, 0), (0, self.m))
@@ -168,7 +175,10 @@ class RlHoverAviary(NewBaseRLAviary):
         return observation, reward, terminated, truncated, info
 
     def reset(self, seed: int = None, options: dict = None):
-
+        if self.trajs is None:
+            phi = np.random.uniform(-math.pi, math.pi, self.NUM_USV)
+            self.trajs = UsvTrajectory(self.time_data, m=self.NUM_USV, r0=self.xyz1[:, 0:2], xyz0=self.xyz1, φ0=phi)
+            self.usv_coord = self.trajs.xyz
         initial_obs, initial_info = super().reset(seed=42, options={})
 
         obs_usv = np.zeros((self.NUM_USV, 6))
@@ -180,9 +190,6 @@ class RlHoverAviary(NewBaseRLAviary):
         pad_width = ((0, 0), (0, self.m))
         padded_array = np.pad(ret, pad_width, mode='constant', constant_values=0)
         initial_obs = np.concatenate((initial_obs, padded_array), axis=0)
-        phi = np.random.uniform(-math.pi, math.pi, 4)
-        self.trajs = UsvTrajectory(self.time_data, m=self.NUM_USV, r0=self.xyz1[:, 0:2], xyz0=self.xyz1, φ0=phi)
-        self.usv_coord = self.trajs.xyz
         return initial_obs, initial_info
 
     def _computeTerminated(self):
