@@ -11,8 +11,8 @@ from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
 from gym_pybullet_drones.examples.loss_function import LossFunction0
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ActionType, ObservationType
-from mystic.solvers import diffev2, fmin_powell
-from mystic.math import almostEqual
+# from mystic.solvers import diffev2, fmin_powell
+# from mystic.math import almostEqual
 
 @dataclass(frozen=True)
 class TimeData:
