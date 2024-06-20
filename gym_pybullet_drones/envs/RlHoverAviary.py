@@ -136,12 +136,12 @@ class RlHoverAviary(NewBaseRLAviary):
 
         loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(self.NUM_DRONES, 3),
                                                                             self.usv_coord[self.step_counter, :, :])
-        # optimized = minimize(loss_func, uav_coord.reshape(6, ))
-        # opt_x = optimized.x.reshape(self.NUM_DRONES, 3)
-        # #opt_x[:, 2] += 10
-        # val_opt = LossFunction0.communication_quality_function(opt_x,
-        #                                                       self.usv_coord[self.step_counter, :, :])
-        val_opt = LossFunction0.sum_distant(uav_coord, self.usv_coord[self.step_counter, :, :])
+        optimized = minimize(loss_func, uav_coord.reshape(6, ))
+        opt_x = optimized.x.reshape(self.NUM_DRONES, 3)
+        #opt_x[:, 2] += 10
+        val_opt = LossFunction0.communication_quality_function(opt_x,
+                                                              self.usv_coord[self.step_counter, :, :])
+        #val_opt = LossFunction0.sum_distant(uav_coord, self.usv_coord[self.step_counter, :, :])
         ret = (val_opt - val) / val_opt
         #ret = 10000 / val**2
         if uav_coord[0, 2] < 1 or uav_coord[1, 2] < 1:

@@ -20,7 +20,7 @@ class LossFunction0:
         # new_d_norm = np.where(angle < alpha, d_norm * k, d_norm)
 
         cf = 3/7
-        h_min = (d_norm * np.sqrt(1 - cf / d_norm + cf ** 2 / 4) - d_norm) / (cf / 2)
+        h_min = (d_norm * np.sqrt(np.clip(1 - cf / d_norm + cf ** 2 / 4, 1, 10000)) - d_norm) / (cf / 2)
         h = x[:, 2]
         h_real = np.repeat(h[:, np.newaxis], 4, axis=1)
         k = (1 - 1000) * h_min / h_real + 1000

@@ -117,12 +117,12 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=1000, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=100, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
-                                 n_eval_episodes=5,
+                                 n_eval_episodes=1,
                                  best_model_save_path=filename + '/',
                                  log_path=filename + '/',
                                  eval_freq=int(1000),
