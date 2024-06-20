@@ -90,7 +90,7 @@ class RlHoverAviary(NewBaseRLAviary):
         # ])
         self.trajs = None
         #self.usv_coord = None
-        self.EPISODE_LEN_SEC = 15
+        self.EPISODE_LEN_SEC = 20
         super().__init__(drone_model=drone_model,
                          num_drones=num_drones,
                          neighbourhood_radius=neighbourhood_radius,
@@ -109,16 +109,8 @@ class RlHoverAviary(NewBaseRLAviary):
         if traj_uav is not None:
             self.trajs = traj_uav
             self.usv_coord = self.trajs.xyz
-        # if not gui:
-        #     self.opt_x = np.zeros((self.usv_coord.shape[0], self.NUM_DRONES, 3))
-        #     self.opt_x[0] = initial_xyzs
-        #     for i in range(1, self.usv_coord.shape[0]):
-        #         loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(1, self.NUM_DRONES, 3),
-        #                                                                                     self.usv_coord[i, :, :].reshape(1,4,3))
-        #         optimized = minimize(loss_func, self.opt_x[i - 1].reshape(6, ))
-        #         self.opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
-        #self.opt_x[:, :, 2] += 10
+
         self.xyz1 = np.array([[0, 40, 0], [0, 50, 0], [0, 60, 0], [0, 70, 0]])
         self.time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
         #print(self.usv_coord)
@@ -137,25 +129,24 @@ class RlHoverAviary(NewBaseRLAviary):
         float
             The reward.
 
-        # """
+        """
         states = np.array([self._getDroneStateVector(i) for i in range(self.NUM_DRONES)])
         uav_coord = np.transpose(np.array([states[:, 0], states[:, 1], states[:, 2]]), (1, 0))
-        val = LossFunction.communication_quality_function(uav_coord, self.usv_coord[self.step_counter, :, :])
+        val = LossFunction0.communication_quality_function(uav_coord, self.usv_coord[self.step_counter, :, :])
 
         loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(self.NUM_DRONES, 3),
                                                                             self.usv_coord[self.step_counter, :, :])
-        optimized = minimize(loss_func, uav_coord.reshape(6, ))
-        #optimized =  diffev2(loss_func, x0=bounds)                 #  dual_annealing(loss_func, bounds=bounds)
-        #optimized = basinhopping(loss_func, uav_coord.reshape(6, ), minimizer_kwargs={"method": "SLSQP"})
-        opt_x = optimized.x.reshape(self.NUM_DRONES, 3)
-        val_opt = LossFunction.communication_quality_function(opt_x,
-                                                              self.usv_coord[self.step_counter, :, :])
-
+        # optimized = minimize(loss_func, uav_coord.reshape(6, ))
+        # opt_x = optimized.x.reshape(self.NUM_DRONES, 3)
+        # #opt_x[:, 2] += 10
+        # val_opt = LossFunction0.communication_quality_function(opt_x,
+        #                                                       self.usv_coord[self.step_counter, :, :])
+        val_opt = LossFunction0.sum_distant(uav_coord, self.usv_coord[self.step_counter, :, :])
         ret = (val_opt - val) / val_opt
-        #ret = 10000 / (val**2)
+        #ret = 10000 / val**2
         if uav_coord[0, 2] < 1 or uav_coord[1, 2] < 1:
             print("H меньше 1")
-        #ret=0
+
         return ret
 
     ################################################################################

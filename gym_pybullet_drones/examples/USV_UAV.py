@@ -27,6 +27,7 @@ import autograd.numpy as np
 from autograd import grad
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
+from gym_pybullet_drones.examples.loss_function import LossFunction0
 from gym_pybullet_drones.utils.enums import DroneModel, Physics
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
@@ -149,7 +150,7 @@ def run(
         d_err = opt_x[i] - np.transpose(np.array([obs[:, 0], obs[:, 1], obs[:, 2]]), (1, 0))
 
         for j in range(num_drone):
-            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], d_err[j,2], 5]
+            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], 0, 5]
             action[j, :] = TARGET_VEL[j, i, :]
 
         #### Go to the next way point and loop #####################

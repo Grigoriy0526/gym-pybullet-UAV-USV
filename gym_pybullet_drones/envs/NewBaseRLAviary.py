@@ -210,13 +210,13 @@ class NewBaseRLAviary(BaseAviary):
                 rpm[k, :] = rpm_k
             elif self.ACT_TYPE == ActionType.VEL:
                 if self.DRONE_MODEL == DroneModel.CF2X or self.DRONE_MODEL == DroneModel.CF2P:
-                    koef = 10
+                    koef = 15
                     state = self._getDroneStateVector(k)
                     if np.linalg.norm(target[:3]) != 0:
                         v_unit_vector = target[:3] / np.linalg.norm(target[:3])
                     else:
                         v_unit_vector = np.zeros(3)
-                    v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, v_unit_vector[2]*koef])
+                    v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, v_unit_vector[2]])
                     temp, _, _ = self.ctrl[k].computeControl(control_timestep=self.CTRL_TIMESTEP,
                                                              cur_pos=state[0:3],
                                                              cur_quat=state[3:7],

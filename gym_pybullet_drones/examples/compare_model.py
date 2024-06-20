@@ -30,6 +30,7 @@ from stable_baselines3 import PPO
 from gym_pybullet_drones.envs.RlHoverAviary import RlHoverAviary
 from gym_pybullet_drones.examples.USV_trajectory import UsvTrajectory
 from gym_pybullet_drones.examples.gradient_descent import LossFunction
+from gym_pybullet_drones.examples.loss_function import LossFunction0
 from gym_pybullet_drones.utils.enums import DroneModel, Physics, ObservationType, ActionType
 from gym_pybullet_drones.envs.CtrlAviary import CtrlAviary
 from gym_pybullet_drones.control.DSLPIDControl import DSLPIDControl
@@ -46,7 +47,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = False
 DEFAULT_SIMULATION_FREQ_HZ = 300
 DEFAULT_CONTROL_FREQ_HZ = 60
-DEFAULT_DURATION_SEC = 10
+DEFAULT_DURATION_SEC = 20
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 NUM_DRONE = 4
@@ -152,7 +153,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/save-06.07.2024_13.56.54'
+    filename = 'results/save-06.19.2024_17.48.42'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 

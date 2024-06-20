@@ -34,13 +34,18 @@ class LossFunction:
         alpha = math.pi / 10
         d = x[:, None] - usv_coord[None]
         angle = np.arctan(d[:, :, 2] / np.linalg.norm(d[:, :, :2], axis=-1))
-        k = (1-100)*angle/alpha + 100
+        k = (1 - 1000) * angle / alpha + 1000
+        d_norm = np.linalg.norm(d, axis=-1)
+        # c = 100
+        # f = 70000
+        # h_min = (d_norm * np.sqrt(1 - c / (4 * f * d_norm) + c ** 2 / (4 * f ** 2)) - d_norm) / (c / (2 * f))
+
         norm_usv_uav = np.where(angle < alpha, (np.linalg.norm(d, axis=-1) ** 2) * k, np.linalg.norm(d, axis=-1) ** 2)
 
         norm_uav = np.linalg.norm(x[:, None] - x[None], axis=-1) ** 2
 
         matrix = np.block([[np.ones((4, 4), int) * np.inf, norm_usv_uav.T],
-                            [norm_usv_uav, norm_uav]
+                           [norm_usv_uav, norm_uav]
                            ])
 
         ind = np.indices((6, 6)).reshape(2, -1).T

@@ -5,6 +5,8 @@ import numpy
 from cycler import cycler
 import numpy as np
 
+from gym_pybullet_drones.examples.loss_function import LossFunction0
+
 os.environ["QT_QPA_PLATFORM"] = "wayland"
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -452,7 +454,7 @@ class Logger(object):
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
             opt_x[i] += optimized.x.reshape(2, 3)
 
-        #opt_x[:, :, 2] += 10
+        opt_x[:, :, 2] += 10
         val_gd = np.zeros(usv_coord.shape[0])
         val_opt = np.zeros(usv_coord.shape[0])
         val_rl= np.zeros(usv_coord.shape[0])
@@ -469,9 +471,9 @@ class Logger(object):
         new_reward_gd = np.sum((val_opt - val_gd) / val_opt)
         print("New reward GD:", new_reward_gd)
         new_reward_rl = np.sum((val_opt - val_rl) / val_opt)
-        print("New reward RL:", new_reward_rl)
-        print("Mean reward RL:", np.mean(val_rl))
-        print("Mean reward GD:", np.mean(val_gd))
+        print("New val RL:", new_reward_rl)
+        print("Mean val RL:", np.mean(val_rl))
+        print("Mean val GD:", np.mean(val_gd))
 
         plt.rc('font', size=20)
         plt.rc('axes', titlesize=35)
@@ -479,7 +481,7 @@ class Logger(object):
         plt.rc('legend', fontsize=35)
         plt.rc('figure', titlesize=1000)
         fig = plt.figure(figsize=(40, 20))
-        ax = fig.add_subplot(121)
+        ax = fig.add_subplot(111)
         plots_usv = []
         plots_uav_gd = []
         plots_uav_rl = []
@@ -491,7 +493,8 @@ class Logger(object):
         self.plot_val_gd = []
         self.plot_val_rl = []
         self.plot_opt_val = []
-        ax2 = fig.add_subplot(122)
+        fig2 = plt.figure(figsize=(40, 20))
+        ax2 = fig2.add_subplot(111)
         ax2.set(xlim=[0, trajs_s.time.n],
                 ylim=[0, np.max(val_rl)])
         ax2.set_title("Функция качества связи")
@@ -501,6 +504,11 @@ class Logger(object):
         self.plot_opt_val += ax2.plot(0, label='Оптимальный')
         self.plot_val_gd += ax2.plot(0, label='Жадный алгоритм')
         self.plot_val_rl += ax2.plot(0, label='DRL')
+
+        self.plot_val_gd += ax2.plot(val_gd)
+        self.plot_val_gd += ax2.plot(val_rl)
+        self.plot_val_gd += ax2.plot(val_opt)
+        ax2.legend(fontsize=20)
 
         # plt.figure(figsize=(40, 20))
         # plt.plot(val_opt)
@@ -521,23 +529,24 @@ class Logger(object):
         tr_max = np.max(usv_coord, axis=(0, 1))
         ax.set(xlim=[tr_min[0], tr_max[0]],
                ylim=[tr_min[1], tr_max[1]])
-        ax.legend(fontsize=25)
+        ax.legend(fontsize=20)
+
 
         def update(frame):
             start_frame = max(0, frame - 100)
             start_frame_uav = max(0, frame - 10)
-            PlotGeneration.update_animation(start_frame_uav, frame, usv_coord, plots_usv)
+            PlotGeneration.update_animation(start_frame, frame, usv_coord, plots_usv)
             PlotGeneration.update_animation(start_frame_uav, frame, uav_coord[:, 0:2, :], plots_uav_gd)
             PlotGeneration.update_animation(start_frame_uav, frame, uav_coord[:, 2:, :], plots_uav_rl)
             #PlotGeneration.update_animation(start_frame_uav, frame, opt_x, plots_uav_opt)
             # PlotGeneration.update_animation(0, frame, opt_x, plot_val_gd)
             # PlotGeneration.update_animation(0, frame, opt_x, plot_val_rl)
             # PlotGeneration.update_animation(0, frame, opt_x, plot_opt_val)
-            self.plot_val_gd += ax2.plot(val_gd[:frame], 'C1')
-            self.plot_val_rl += ax2.plot(val_rl[:frame], 'g')
-            self.plot_opt_val += ax2.plot(val_opt[:frame], 'b')
-            ax2.legend(fontsize=25)
-            full_plots = plots_usv + plots_uav_gd + plots_uav_rl + self.plot_val_gd + self.plot_val_rl + plots_uav_opt + self.plot_opt_val
+            # self.plot_val_gd += ax2.plot(val_gd[:frame], 'C1')
+            # self.plot_val_rl += ax2.plot(val_rl[:frame], 'g')
+            # self.plot_opt_val += ax2.plot(val_opt[:frame], 'b')
+            # ax2.legend(fontsize=20)
+            full_plots = plots_usv + plots_uav_gd + plots_uav_rl #+ self.plot_val_gd + self.plot_val_rl + plots_uav_opt + self.plot_opt_val
             return full_plots
 
         ani1 = animation.FuncAnimation(fig, update, frames=trajs_s.time.n, blit=True, interval=100)
@@ -573,16 +582,16 @@ class Logger(object):
         opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
         opt_x[0] = uav_coord_c[0, :, :]
         for i in range(1, usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3), usv_coord[i, :, :])
+            loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(2, 3), usv_coord[i, :, :])
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
             opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
-        #opt_x[:, :, 2] += 30
+        opt_x[:, :, 2] += 10
         val = np.zeros(usv_coord.shape[0])
         val_opt = np.zeros(usv_coord.shape[0])
         for i in range(usv_coord.shape[0]):
-            val_opt[i] = LossFunction.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
-            val[i] = LossFunction.communication_quality_function(uav_coord[i, :, :], usv_coord[i, :, :])
+            val_opt[i] = LossFunction0.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
+            val[i] = LossFunction0.communication_quality_function(uav_coord[i, :, :], usv_coord[i, :, :])
 
         reward = np.sum(10000 / val ** 2)
         print("Reward", reward)
@@ -595,13 +604,13 @@ class Logger(object):
         plt.rc('legend', fontsize=25)
         plt.rc('figure', titlesize=1000)
         fig = plt.figure(figsize=(40, 20))
-        ax = fig.add_subplot(121)
+        ax = fig.add_subplot(111)
         plots_usv = []
         plots_uav = []
         plots_uav_opt = []
-        PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "USV", 3.0)
-        PlotGeneration.created_plot(plots_uav, ax, self.NUM_DRONES, uav_coord, "UAV", 7.0)
-        PlotGeneration.created_plot(plots_uav_opt, ax, self.NUM_DRONES, opt_x, "UAV_OPT", 3.0)
+        PlotGeneration.created_plot(plots_usv, ax, trajs.m, usv_coord, "БПНА", 3.0)
+        PlotGeneration.created_plot(plots_uav, ax, self.NUM_DRONES, uav_coord, "БПЛА", 7.0)
+        PlotGeneration.created_plot(plots_uav_opt, ax, self.NUM_DRONES, opt_x, "БПАЛ opt.", 3.0)
 
         ax.set_xlabel('  x, м')
         ax.set_ylabel('  y, м')
@@ -612,11 +621,27 @@ class Logger(object):
                ylim=[tr_min[1], tr_max[1]])
         ax.legend(fontsize=10)
 
-        ax2 = fig.add_subplot(122)
-        ax2.set(xlim=[0, trajs_s.time.n],
+        fig2 = plt.figure(figsize=(40, 20))
+        ax2 = fig2.add_subplot(111)
+        ax2.set(xlim=[0, 20],
                 ylim=[0, np.max(val)])
         ax2.set_title("Функция качества связи")
+        ax2.set_xlabel('  Время, сек')
+        ax2.set_ylabel('  F')
         ax2.grid()
+        plot_val = []
+        t_val = np.linspace(0, 20, len(val))
+        plot_val += ax2.plot(t_val, val, label='Жадный алгоритм')
+        plot_val += ax2.plot(t_val, val_opt, label='Оптимальный')
+
+        #plot_val += ax2.plot(val)
+        #plot_val += ax2.plot(val_opt)
+        ax2.legend(fontsize=20)
+
+
+
+
+
 
         def update(frame):
             start_frame = max(0, frame - 100)
@@ -626,10 +651,10 @@ class Logger(object):
             PlotGeneration.update_animation(start_frame_uav, frame, opt_x, plots_uav_opt)
 
             plot_val = []
-            plot_opt_val = []
-            plot_val += ax2.plot(val[:frame], "b")
-            plot_opt_val += ax2.plot(val_opt[:frame], "r")
-            full_plots = plots_usv + plots_uav + plots_uav_opt + plot_val + plot_opt_val
+            #plot_opt_val = []
+            #plot_val += ax2.plot(val[:frame], "b")
+            #plot_opt_val += ax2.plot(val_opt[:frame], "r")
+            full_plots = plots_usv + plots_uav# + plots_uav_opt + plot_val + plot_opt_val
             return full_plots
 
         ani1 = animation.FuncAnimation(fig, update, frames=trajs_s.time.n, blit=True, interval=100)
