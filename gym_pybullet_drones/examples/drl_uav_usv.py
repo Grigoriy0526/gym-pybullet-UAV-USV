@@ -47,7 +47,7 @@ DEFAULT_OBS = ObservationType('kin')  # 'kin' or 'rgb'
 DEFAULT_ACT = ActionType('vel')  # 'rpm' or 'pid' or 'vel' or 'one_d_rpm' or 'one_d_pid'
 DEFAULT_AGENTS = 2
 DEFAULT_PHYSICS = Physics.PYB
-MOD = 'old'
+MOD = 'new'
 
 
 def run(output_folder=DEFAULT_OUTPUT_FOLDER,
