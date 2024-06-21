@@ -449,7 +449,7 @@ class Logger(object):
         opt_x = np.zeros((usv_coord.shape[0], 2, 3))
         opt_x[0] = uav_coord_c[0, 2:, :]
         for i in range(1, usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3),
+            loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(2, 3),
                                                                               usv_coord[i, :, :])
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
             opt_x[i] += optimized.x.reshape(2, 3)
@@ -459,9 +459,9 @@ class Logger(object):
         val_opt = np.zeros(usv_coord.shape[0])
         val_rl= np.zeros(usv_coord.shape[0])
         for i in range(usv_coord.shape[0]):
-            val_opt[i] = LossFunction.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
-            val_rl[i] = LossFunction.communication_quality_function(uav_coord[i, 2:, :], usv_coord[i, :, :])
-            val_gd[i] = LossFunction.communication_quality_function(uav_coord[i, 0:2, :], usv_coord[i, :, :])
+            val_opt[i] = LossFunction0.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
+            val_rl[i] = LossFunction0.communication_quality_function(uav_coord[i, 2:, :], usv_coord[i, :, :])
+            val_gd[i] = LossFunction0.communication_quality_function(uav_coord[i, 0:2, :], usv_coord[i, :, :])
         reward_gd = np.sum(10000 / val_gd ** 2)
         print("Reward GD:", reward_gd)
         reward_rl = np.sum(10000 / val_rl ** 2)
@@ -564,7 +564,7 @@ class Logger(object):
     def plot_trajct(self, trajs=0, df=None):
 
         PLOT_FS = 20
-        SIMULATED_FS = 60
+        SIMULATED_FS = 100
         # plt.plot(df['timesteps'], df['results'])
         # plt.title('Эффективность обучения алгоритма PPO')
         # plt.xlabel('Число эризодов')
@@ -582,7 +582,7 @@ class Logger(object):
         opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
         opt_x[0] = uav_coord_c[0, :, :]
         for i in range(1, usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3), usv_coord[i, :, :])
+            loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(2, 3), usv_coord[i, :, :])
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
             opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
@@ -590,8 +590,8 @@ class Logger(object):
         val = np.zeros(usv_coord.shape[0])
         val_opt = np.zeros(usv_coord.shape[0])
         for i in range(usv_coord.shape[0]):
-            val_opt[i] = LossFunction.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
-            val[i] = LossFunction.communication_quality_function(uav_coord[i, :, :], usv_coord[i, :, :])
+            val_opt[i] = LossFunction0.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
+            val[i] = LossFunction0.communication_quality_function(uav_coord[i, :, :], usv_coord[i, :, :])
 
         reward = np.sum(10000 / val ** 2)
         print("Reward", reward)
@@ -619,7 +619,7 @@ class Logger(object):
         tr_max = np.max(usv_coord, axis=(0, 1))
         ax.set(xlim=[tr_min[0], tr_max[0]],
                ylim=[tr_min[1], tr_max[1]])
-        ax.legend(fontsize=10)
+        ax.legend(fontsize=25)
 
         fig2 = plt.figure(figsize=(40, 20))
         ax2 = fig2.add_subplot(111)
@@ -654,7 +654,7 @@ class Logger(object):
             #plot_opt_val = []
             #plot_val += ax2.plot(val[:frame], "b")
             #plot_opt_val += ax2.plot(val_opt[:frame], "r")
-            full_plots = plots_usv + plots_uav# + plots_uav_opt + plot_val + plot_opt_val
+            full_plots = plots_usv + plots_uav + plots_uav_opt #+ plot_val + plot_opt_val
             return full_plots
 
         ani1 = animation.FuncAnimation(fig, update, frames=trajs_s.time.n, blit=True, interval=100)

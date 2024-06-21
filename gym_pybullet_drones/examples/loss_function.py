@@ -19,13 +19,13 @@ class LossFunction0:
         # k = (1 - 100) * angle / alpha + 100
         # new_d_norm = np.where(angle < alpha, d_norm * k, d_norm)
 
-        cf = 3/7
-        h_min = (d_norm * np.sqrt(np.clip(1 - cf / d_norm + cf ** 2 / 4, 1, 10000)) - d_norm) / (cf / 2)
-        h = x[:, 2]
-        h_real = np.repeat(h[:, np.newaxis], 4, axis=1)
-        k = (1 - 1000) * h_min / h_real + 1000
-        new_d_norm = np.where(h_real < h_min, d_norm * k, d_norm)
-        uav_usv_sum_dist = np.sum(np.min(new_d_norm, axis=0) ** 2, axis=0)
+        # cf = 3/7
+        # h_min = (d_norm * np.sqrt(np.clip(1 - cf / d_norm + cf ** 2 / 4, 1, 10000)) - d_norm) / (cf / 2)
+        # h = x[:, 2]
+        # h_real = np.repeat(h[:, np.newaxis], 4, axis=1)
+        # k = (1 - 100) * h_min / h_real + 100
+        #new_d_norm = np.where(h_real < h_min, d_norm * k, d_norm)
+        uav_usv_sum_dist = np.sum(np.min(d_norm, axis=0) ** 2, axis=0)
 
         return uav_usv_sum_dist + 0.5 * uav_sum_dist
 

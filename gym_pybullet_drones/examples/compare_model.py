@@ -153,7 +153,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/save-06.19.2024_17.48.42'
+    filename = 'results/learn_300_variant1'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 
@@ -183,7 +183,7 @@ def run(
 
         #### Step the simulation ###################################
         obs, reward, terminated, truncated, info = env.step(action)
-        function = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3),
+        function = lambda x: LossFunction0.communication_quality_function(x.reshape(2, 3),
                                                                          usv_coord[i, :, :])
         optimized = minimize(function, opt_x[i - 1].reshape(6, ))
         opt_x[i] = optimized.x.reshape(2, 3)
@@ -193,7 +193,7 @@ def run(
         else:
             v_unit_vector = np.zeros(3)
         for j in range(2):
-            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], 0, 5])
+            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], v_unit_vector[j, 2], 5])
         action[0:2, :] = TARGET_VEL[0:2, i, :]
 
 
