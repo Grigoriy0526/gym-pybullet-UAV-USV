@@ -582,16 +582,16 @@ class Logger(object):
         opt_x = np.zeros((usv_coord.shape[0], self.NUM_DRONES, 3))
         opt_x[0] = uav_coord_c[0, :, :]
         for i in range(1, usv_coord.shape[0]):
-            loss_func = lambda x: LossFunction0.communication_quality_function(x.reshape(2, 3), usv_coord[i, :, :])
+            loss_func = lambda x: LossFunction.communication_quality_function(x.reshape(2, 3), usv_coord[i, :, :])
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
             opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
-        opt_x[:, :, 2] += 10
+        #opt_x[:, :, 2] += 10
         val = np.zeros(usv_coord.shape[0])
         val_opt = np.zeros(usv_coord.shape[0])
         for i in range(usv_coord.shape[0]):
-            val_opt[i] = LossFunction0.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
-            val[i] = LossFunction0.communication_quality_function(uav_coord[i, :, :], usv_coord[i, :, :])
+            val_opt[i] = LossFunction.communication_quality_function(opt_x[i, :, :], usv_coord[i, :, :])
+            val[i] = LossFunction.communication_quality_function(uav_coord[i, :, :], usv_coord[i, :, :])
 
         reward = np.sum(10000 / val ** 2)
         print("Reward", reward)

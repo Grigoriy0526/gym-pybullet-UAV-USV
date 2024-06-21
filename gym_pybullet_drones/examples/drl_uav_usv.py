@@ -98,15 +98,15 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/h_val2' + '/best_model.zip'
+        path0 = 'results/save-06.21.2024_16.37.28' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
         model = PPO('MlpPolicy',
                     train_env,
 
-                    #n_steps= 1000,     #2048
-                    #batch_size=8000, #64
+                    #n_steps= 4084,     #2048
+                    #batch_size=128, #64
                     #gamma=0.001, #0.99
                     #learning_rate=0.0001, #0.0003
                     #ent_coef=0.05, #.0.0
@@ -117,12 +117,12 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=100, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=10, min_evals=300, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
-                                 n_eval_episodes=1,
+                                 n_eval_episodes=3,
                                  best_model_save_path=filename + '/',
                                  log_path=filename + '/',
                                  eval_freq=int(1000),
