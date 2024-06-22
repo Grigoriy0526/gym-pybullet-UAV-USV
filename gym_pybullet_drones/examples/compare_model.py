@@ -47,7 +47,7 @@ DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = False
 DEFAULT_SIMULATION_FREQ_HZ = 300
 DEFAULT_CONTROL_FREQ_HZ = 60
-DEFAULT_DURATION_SEC = 20
+DEFAULT_DURATION_SEC = 15
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
 NUM_DRONE = 4
@@ -99,10 +99,10 @@ def run(
         ):
         #### Initialize the simulation #############################
     INIT_XYZS = np.array([
-                          [0, 55, 10],
-                          [0, 95, 10],
-                          [0, 50, 10],
-                          [0, 90, 10]
+                          [0, 58, 10],
+                          [0, 58, 10],
+                          [0, 45, 10],
+                          [0, 55, 10]
                           ])
     INIT_RPYS = np.array([
                           [0, 0, 0],
@@ -111,15 +111,15 @@ def run(
                           [0, 0, 0]
                           ])
     INIT_XYZS_0 = np.array([
-        [0, 50, 10],
-        [0, 90, 10]
+        [0, 45, 10],
+        [0, 55, 10]
     ])
     INIT_RPYS_0 = np.array([
         [0, 0, 0],
         [0, 0, 0]
     ])
 
-    xyz1 = np.array([[0, 40, 0], [0, 60, 0], [0, 80, 0], [0, 100, 0]])
+    xyz1 = np.array([[0, 40, 0], [0, 50, 0], [0, 60, 0], [0, 70, 0]])
     phi = np.array([np.random.uniform(-math.pi, math.pi),
                     np.random.uniform(-math.pi, math.pi),
                     np.random.uniform(-math.pi, math.pi),
@@ -153,7 +153,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/learn_300_variant1'
+    filename = 'results/'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 
@@ -193,7 +193,7 @@ def run(
         else:
             v_unit_vector = np.zeros(3)
         for j in range(2):
-            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], v_unit_vector[j, 2], 5])
+            TARGET_VEL[j, i, :] = np.array([v_unit_vector[j, 0], v_unit_vector[j, 1], 0, 5])
         action[0:2, :] = TARGET_VEL[0:2, i, :]
 
 
@@ -204,7 +204,7 @@ def run(
                                             deterministic=True
                                             )
         for k in range(2, 4):
-            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], act[k-2, 2], 5*act[k-2, 3]])
+            TARGET_VEL[k, i, :] = np.array([act[k-2, 0], act[k-2, 1], 0, 5*act[k-2, 3]])
         action[2:, :] = TARGET_VEL[2:, i, :]
 
 

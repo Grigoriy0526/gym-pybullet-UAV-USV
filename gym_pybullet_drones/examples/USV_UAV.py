@@ -43,7 +43,7 @@ DEFAULT_PLOT = True
 DEFAULT_USER_DEBUG_GUI = False
 DEFAULT_OBSTACLES = False
 DEFAULT_SIMULATION_FREQ_HZ = 300
-DEFAULT_CONTROL_FREQ_HZ = 100
+DEFAULT_CONTROL_FREQ_HZ = 60
 DEFAULT_DURATION_SEC = 20
 DEFAULT_OUTPUT_FOLDER = 'results'
 DEFAULT_COLAB = False
@@ -150,7 +150,7 @@ def run(
         d_err = opt_x[i] - np.transpose(np.array([obs[:, 0], obs[:, 1], obs[:, 2]]), (1, 0))
 
         for j in range(num_drone):
-            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], d_err[j, 2], 5]
+            TARGET_VEL[j, i, :] = [d_err[j, 0], d_err[j, 1], 0, 5]
             action[j, :] = TARGET_VEL[j, i, :]
 
         #### Go to the next way point and loop #####################

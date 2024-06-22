@@ -98,7 +98,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     #### Train the model #######################################
     # создаем модель с PPO
     if mod == "old":
-        path0 = 'results/not_h_opt_70_1' + '/best_model.zip'
+        path0 = 'results/not_h_opt_100_3' + '/best_model.zip'
         model = PPO.load(path0)
         model.set_env(train_env)
     else:
@@ -117,12 +117,12 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     target_reward = 10
 
     callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=target_reward, verbose=1)
-    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=10, min_evals=100, verbose=1)
+    stop_traning = StopTrainingOnNoModelImprovement(max_no_improvement_evals=1, min_evals=50, verbose=1)
     eval_callback = EvalCallback(eval_env,
                                  #callback_on_new_best=callback_on_best,
                                  callback_after_eval=stop_traning,
                                  verbose=1,
-                                 n_eval_episodes=5,
+                                 n_eval_episodes=2,
                                  best_model_save_path=filename + '/',
                                  log_path=filename + '/',
                                  eval_freq=int(1000),

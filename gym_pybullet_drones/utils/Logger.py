@@ -490,24 +490,22 @@ class Logger(object):
         PlotGeneration.created_plot(plots_uav_gd, ax, 2, uav_coord[:, 0:2, :], "БПЛА жадный", 7.0)
         PlotGeneration.created_plot(plots_uav_rl, ax, 2, uav_coord[:, 2:, :], "БПЛА RL", 7.0)
         #PlotGeneration.created_plot(plots_uav_opt, ax, 2, opt_x, "UAV_OPT", 3.0, )
-        self.plot_val_gd = []
-        self.plot_val_rl = []
-        self.plot_opt_val = []
+
+        plot_val_rl = []
+        t_val = np.linspace(0, 15, len(val_rl))
         fig2 = plt.figure(figsize=(40, 20))
         ax2 = fig2.add_subplot(111)
-        ax2.set(xlim=[0, trajs_s.time.n],
+        ax2.set(xlim=[0, 15],
                 ylim=[0, np.max(val_rl)])
         ax2.set_title("Функция качества связи")
         ax2.set_xlabel('  Время, сек')
         ax2.set_ylabel('  F')
         ax2.grid()
-        self.plot_opt_val += ax2.plot(0, label='Оптимальный')
-        self.plot_val_gd += ax2.plot(0, label='Жадный алгоритм')
-        self.plot_val_rl += ax2.plot(0, label='DRL')
+        plot_val_rl += ax2.plot(t_val, val_opt, label='Оптимальный')
+        plot_val_rl += ax2.plot(t_val, val_gd, label='Жадный алгоритм')
+        plot_val_rl += ax2.plot(t_val, val_rl,  label='DRL')
 
-        self.plot_val_gd += ax2.plot(val_gd)
-        self.plot_val_gd += ax2.plot(val_rl)
-        self.plot_val_gd += ax2.plot(val_opt)
+
         ax2.legend(fontsize=20)
 
         # plt.figure(figsize=(40, 20))

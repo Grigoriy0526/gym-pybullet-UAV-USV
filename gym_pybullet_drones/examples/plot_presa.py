@@ -34,13 +34,13 @@ from scipy.optimize import minimize
 import autograd.numpy as np
 from autograd import grad
 from IPython.display import HTML, display
-filename = 'results/OPT_100_40HZ'
+filename = 'results/not_h_opt_70_1'
 df = np.load(filename + '/evaluations.npz')
 
-plt.rc('font', size=25)
-plt.rc('axes', titlesize=25)
-plt.rc('axes', labelsize=25)
-plt.rc('legend', fontsize=25)
+plt.rc('font', size=35)
+plt.rc('axes', titlesize=35)
+plt.rc('axes', labelsize=35)
+plt.rc('legend', fontsize=35)
 plt.rc('figure', titlesize=1000)
 plt.plot(df['timesteps']/50, df['results'])
 plt.title('Эффективность обучения алгоритма PPO')

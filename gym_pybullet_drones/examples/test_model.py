@@ -75,17 +75,17 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
     # создаем файл
 
     INIT_XYZS = np.array([
-        [0, 50, 10],
-        [0, 90, 10]
+        [0, 45, 10],
+        [0, 55, 10]
     ])
     INIT_RPYS = np.array([
         [0, 0, 0],
         [0, 0, 0]
     ])
-    filename = 'results/save-06.04.2024_13.39.34'
+    filename = 'results/not_h_opt_100_3'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
-    df = np.load(filename + '/evaluations.npz')
+    #df = np.load(filename + '/evaluations.npz')
 
     #### Show (and record a video of) the model's performance ##
 
@@ -95,7 +95,7 @@ def run(output_folder=DEFAULT_OUTPUT_FOLDER,
 
     mean_reward, std_reward = evaluate_policy(model,
                                               test_env_nogui,
-                                              n_eval_episodes=100
+                                              n_eval_episodes=10
                                               )
     print("\n\n\nMean reward ", mean_reward, " +- ", std_reward, "\n\n")
 
