@@ -564,7 +564,7 @@ class Logger(object):
     def plot_trajct(self, trajs=0, df=None):
 
         PLOT_FS = 20
-        SIMULATED_FS = 100
+        SIMULATED_FS = 60
         # plt.plot(df['timesteps'], df['results'])
         # plt.title('Эффективность обучения алгоритма PPO')
         # plt.xlabel('Число эризодов')
@@ -586,7 +586,7 @@ class Logger(object):
             optimized = minimize(loss_func, opt_x[i - 1].reshape(6, ))
             opt_x[i] += optimized.x.reshape(self.NUM_DRONES, 3)
 
-        #opt_x[:, :, 2] += 10
+        opt_x[:, :, 2] += 10
         val = np.zeros(usv_coord.shape[0])
         val_opt = np.zeros(usv_coord.shape[0])
         for i in range(usv_coord.shape[0]):
