@@ -215,7 +215,7 @@ class NewBaseRLAviary(BaseAviary):
                     if np.linalg.norm(target[:2]) != 0:
                         v_unit_vector = target[:2] / np.linalg.norm(target[:2])
                     else:
-                        v_unit_vector = np.zeros(3)
+                        v_unit_vector = np.zeros(2)
                     v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, 0])
                     temp, _, _ = self.ctrl[k].computeControl(control_timestep=self.CTRL_TIMESTEP,
                                                              cur_pos=state[0:3],
