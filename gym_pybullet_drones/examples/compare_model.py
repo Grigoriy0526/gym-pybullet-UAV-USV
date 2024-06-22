@@ -153,7 +153,7 @@ def run(
                              traj_uav=trajs
                             )
 
-    filename = 'results/'
+    filename = 'results/not_h_200_2'
     path0 = filename + '/best_model.zip'
     model = PPO.load(path0)
 

@@ -115,7 +115,7 @@ class RlHoverAviary(NewBaseRLAviary):
         self.time_data = TimeData(self.EPISODE_LEN_SEC, pyb_freq)
         #print(self.usv_coord)
         if self.ACT_TYPE == ActionType.VEL or self.ACT_TYPE == ActionType.RPM:
-            self.m = 120
+            self.m = 90
         elif self.ACT_TYPE == ActionType.PID:
             self.m = 30
 

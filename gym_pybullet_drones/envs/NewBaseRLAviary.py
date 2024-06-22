@@ -109,7 +109,7 @@ class NewBaseRLAviary(BaseAviary):
 
         """
         if self.ACT_TYPE in [ActionType.RPM, ActionType.VEL]:
-            size = 4
+            size = 3
         elif self.ACT_TYPE == ActionType.PID:
             size = 3
         elif self.ACT_TYPE in [ActionType.ONE_D_RPM, ActionType.ONE_D_PID]:
@@ -212,8 +212,8 @@ class NewBaseRLAviary(BaseAviary):
                 if self.DRONE_MODEL == DroneModel.CF2X or self.DRONE_MODEL == DroneModel.CF2P:
                     koef = 15
                     state = self._getDroneStateVector(k)
-                    if np.linalg.norm(target[:3]) != 0:
-                        v_unit_vector = target[:3] / np.linalg.norm(target[:3])
+                    if np.linalg.norm(target[:2]) != 0:
+                        v_unit_vector = target[:2] / np.linalg.norm(target[:2])
                     else:
                         v_unit_vector = np.zeros(3)
                     v = np.array([v_unit_vector[0]*koef, v_unit_vector[1]*koef, 0])
@@ -224,7 +224,7 @@ class NewBaseRLAviary(BaseAviary):
                                                              cur_ang_vel=state[13:16],
                                                              target_pos=np.array([state[0], state[1], state[2]]), # same as the current position
                                                              target_rpy=state[7:10],
-                                                             target_vel=v * self.SPEED_LIMIT * np.abs(target[3])
+                                                             target_vel=v * self.SPEED_LIMIT * np.abs(target[2])
                                                              # target the desired velocity vector
                                                              )
                 elif self.DRONE_MODEL == DroneModel.RACE:
@@ -292,9 +292,9 @@ class NewBaseRLAviary(BaseAviary):
             for i in range(self.ACTION_BUFFER_SIZE):
                 if self.ACT_TYPE in [ActionType.RPM, ActionType.VEL]:
                     obs_lower_bound = np.hstack(
-                        [obs_lower_bound, np.array([[act_lo, act_lo, act_lo, act_lo] for i in range(nums)])])
+                        [obs_lower_bound, np.array([[act_lo, act_lo, act_lo] for i in range(nums)])])
                     obs_upper_bound = np.hstack(
-                        [obs_upper_bound, np.array([[act_hi, act_hi, act_hi, act_hi] for i in range(nums)])])
+                        [obs_upper_bound, np.array([[act_hi, act_hi, act_hi] for i in range(nums)])])
                 elif self.ACT_TYPE == ActionType.PID:
                     obs_lower_bound = np.hstack(
                         [obs_lower_bound, np.array([[act_lo, act_lo, act_lo] for i in range(nums)])])
